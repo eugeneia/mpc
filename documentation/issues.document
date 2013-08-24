@@ -1,4 +1,2 @@
-+ input.lisp: error handling (consecutive runs), bad character-position
-  count?
 + improve documentation (=BIND is an unfitting verb)
 + improve debuggability
