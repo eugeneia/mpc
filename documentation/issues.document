@@ -1,4 +1,3 @@
-+ Find out which exported symbols are useless, or conceptually wrong.
 + input.lisp: error handling (consecutive runs), bad character-position
   count?
 + improve documentation (=BIND is an unfitting verb)
