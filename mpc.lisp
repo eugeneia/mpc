@@ -1,6 +1,6 @@
 ;;;; Monadic parser primitives and utility parsers.
 
-(in-package :smug)
+(in-package :mpc)
 
 (defvar *input-at-run* nil
   "Bound to intial input during RUN.")

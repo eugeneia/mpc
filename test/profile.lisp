@@ -1,4 +1,4 @@
-(in-package :smug)
+(in-package :mpc)
 
 #-sbcl (error "This is SBCL code, sorry!")
 

@@ -1,6 +1,6 @@
 ;;;; Input primitives.
 
-(in-package :smug)
+(in-package :mpc)
 
 
 ;;; Input interface

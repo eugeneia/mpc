@@ -1,6 +1,6 @@
-;;;; Smug parsers for character inputs.
+;;;; Parsers for character inputs.
 
-(in-package :smug.characters)
+(in-package :mpc.characters)
 
 (defparameter *whitespace* '(#\Tab #\Newline #\Vt #\Ff #\Return #\Space)
   "Whitespace characters.")

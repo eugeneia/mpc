@@ -1,6 +1,6 @@
-;;;; Smug parsers for character numerals.
+;;;; Parsers for character numerals.
 
-(in-package :smug.numerals)
+(in-package :mpc.numerals)
 
 (defun =digit (&optional (radix 10))
   "Returns a parser which parses a digit with {RADIX}."

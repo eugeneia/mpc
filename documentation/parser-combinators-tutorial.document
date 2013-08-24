@@ -4,16 +4,21 @@ Discussion of static types and the details of monads are omitted as we
 are simply concerned with parsing.
 
 The example code in the following document is completely self-contained,
-and does not require an installation of the smug library.
+and does not require an installation of the {MPC} library.
 
 In some cases, the natural name for a parser conflicts with a name in the
 {COMMON-LISP} package. In those cases, rather then shadow the symbols,
 I have chosen to prefix those names with a {#\\=} character. It is
-thought that this aids usability, as one can simply {(:use :smug)}.
+thought that this aids usability, as one can simply {(:use :mpc)}.
 
 No prior experience with functional programming, monads or recursive
 descent parsing is assumed. The only requirements are an ANSI Common Lisp
 environment, and a burning desire to find a better way to parse.
+
+It was written by Drew Crampsie for _Smug_¹ and edited by Max
+Rottenkolber for his fork {MPC}.
+
++ 1. [https://github.com/drewc/smug]
 
 
 < Introduction
@@ -86,9 +91,9 @@ environment, and a burning desire to find a better way to parse.
 
 < Reading input
 
- _Smug_ parsers allow infinite look-ahead and backtracking. To support
+ {MPC} parsers allow infinite look-ahead and backtracking. To support
  parsing many different things, it is useful to define an input
- protocol. _Smug_ parsers only require three operations on input:
+ protocol. {MPC} parsers only require three operations on input:
  {INPUT-FIRST}, {INPUT-REST} and {INPUT-EMPTY-P}. We will define them in
  terms of strings. This is not a particularly efficient implementation,
  but it serves our purposes.
@@ -120,7 +125,7 @@ environment, and a burning desire to find a better way to parse.
 
  There are three simple primitive parsers. It it only necessary to
  understand them, and one sequencing combinator, {BIND}, to understand
- all of smug.
+ all of {MPC}.
 
 
  < {RESULT}

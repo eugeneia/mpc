@@ -1,6 +1,6 @@
-;;;; Package definitions for smug.
+;;;; Package definitions for MPC.
 
-(defpackage smug
+(defpackage mpc
   (:documentation "Monadic parser combinators.")
   (:use :cl)
   (:export :=end-of-input
@@ -37,10 +37,10 @@
 	   :run
 	   :get-input-position))
 
-(defpackage smug.characters
-  (:documentation "Smug parsers for character inputs.")
+(defpackage mpc.characters
+  (:documentation "Parsers for character inputs.")
   (:use :cl
-	:smug)
+	:mpc)
   (:export :=character
 	   :=string
 	   :=string-of
@@ -49,11 +49,11 @@
 	   :=newline
 	   :=line))
 
-(defpackage smug.numerals
-  (:documentation "Smug parsers for character numerals.")
+(defpackage mpc.numerals
+  (:documentation "Parsers for character numerals.")
   (:use :cl
-	:smug
-	:smug.characters)
+	:mpc
+	:mpc.characters)
   (:export :=digit
 	   :=natural-number
 	   :=integer-number))

@@ -1,6 +1,6 @@
 ;;;; Funtions and parsers that ease the handling of parser failures.
 
-(in-package :smug)
+(in-package :mpc)
 
 (defun parse-line-position (input position)
   "Parses line position of {POSITION} in {INPUT}."

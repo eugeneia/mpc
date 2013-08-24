@@ -1,12 +1,12 @@
 < Abstract
 
- Smug is a monadic parser combinators library. It provides a toolbox of
+ MPC is a monadic parser combinators library. It provides a toolbox of
  predefined parsers, facilities for error handling and parses arrays,
  streams and lists.
 
- This is the manual for the packages {smug}, {smug.characters}, and
- {smug.numerals}. Refer to [api.html] for detailed documentation of
- external symbols. To learn more about {smug}'s internals and monadic
+ This is the manual for the packages {MPC}, {MPC.CHARACTERS}, and
+ {MPC.NUMERALS}. Refer to [api.html] for detailed documentation of
+ external symbols. To learn more about {MPC}'s internals and monadic
  parser combinators in general read [parser-combinators-tutorial.html]. 
 
 >
@@ -14,7 +14,7 @@
 
 < {RUN}: Main entry point.
 
- {RUN} is the main entry point to {SMUG} and has to be used to run a
+ {RUN} is the main entry point to {MPC} and has to be used to run a
  parser against input.
 
 >
@@ -22,7 +22,7 @@
 
 < Primitive parsers and combinators
 
- The core of {smug} is made up of primitive parsers and combinators. A
+ The core of {MPC} is made up of primitive parsers and combinators. A
  parser is a function that accepts an input source and returns a list of
  pairs containing the result and the remaining input. A combinator is a
  function which returns a parser. For consistency primitive parsers are
