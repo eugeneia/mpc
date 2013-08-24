@@ -1,13 +1,14 @@
 < Abstract
 
- MPC is a monadic parser combinators library. It provides a toolbox of
+ {MPC} is a monadic parser combinators library. It provides a toolbox of
  predefined parsers, facilities for error handling and parses arrays,
  streams and lists.
 
- This is the manual for the packages {MPC}, {MPC.CHARACTERS}, and
- {MPC.NUMERALS}. Refer to [api.html] for detailed documentation of
- external symbols. To learn more about {MPC}'s internals and monadic
- parser combinators in general read [parser-combinators-tutorial.html]. 
+ This manual summarizes the exported functions of the packages {MPC},
+ {MPC.CHARACTERS}, and {MPC.NUMERALS}. Refer to [api.html] for detailed
+ descriptions of specific functions. To learn more about {MPC}'s
+ internals and monadic parser combinators in general read
+ [parser-combinators-tutorial.html].
 
 >
 
@@ -24,19 +25,20 @@
 
  The core of {MPC} is made up of primitive parsers and combinators. A
  parser is a function that accepts an input source and returns a list of
- pairs containing the result and the remaining input. A combinator is a
- function which returns a parser. For consistency primitive parsers are
- defined as combinators that that always return the same parser.
+ pairs containing the result and the remaining input if it is successful
+ and {NIL} othwerise to signal its failure to parent parsers. A
+ combinator is a function which returns a parser. For consistency
+ primitive parsers are defined as combinators that that always return the
+ primitive parser.
 
- {ITEM} is used to pop off an item from input. It fails when input is
- empty. {RESULT} always succeeds with a given value without consuming
- input. It is used to return anything but {(ITEM)} from a parser.
- To check for end of input there is {END-OF-INPUT} which succeeds only
- when input is empty.
+ {=ITEM} is used to pop off an item from input. It fails when input is
+ empty. {=RESULT} always succeeds with a given value without consuming
+ input. It is used to return arbitrary values from a parser. To check for
+ end of input there is {=END-OF-INPUT} which succeeds only when input is
+ empty.
 
-
- The primitive combinator {BIND} permits applying parsers in sequence and3
- offers a way to access their intermediate results. {PLUS} lets us
+ The primitive combinator {=BIND} permits applying parsers in sequence
+ and offers a way to access their intermediate results. {=PLUS} lets us
  combine parsers in a non-deterministic way while {=OR} and {=AND} are
  deterministic alternatives. {=IF} allows for conditional application of
  parsers.
@@ -46,48 +48,52 @@
 
 < {=LET*}: Syntax for lispers
 
- The {=LET*} macro offers a lispy syntax for {BIND}. It also offers a way
- to ignore intermediate values.
+ The {=LET*} macro offers a lispy syntax for {=BIND}. It also offers a
+ way to ignore intermediate values.
 
 >
 
 
 < Error handling
 
- {FAIL} simply always fails. It optionally accepts expressions to be
+ {=FAIL} simply always fails. It optionally accepts expressions to be
  evaluated at failure. Those expressions are permitted to call
  {GET-INPUT-POSITION}, which can be used to determine where a failure
  occurred.
 
  Two other error handling facilities {=HANDLER-CASE} and {=RESTART-CASE}
- do what their names suggest.
+ do what their names suggest. Instead of forms to be evaluated, every
+ _case clause_ accepts parsers to be run.
 
 >
 
 
 < More combinators
 
- {=WHEN} and {=UNLESS} combine parsers as if by {=AND} if their condition
- parser succeeds or fails respectively. {=NOT} applies {(ITEM)} to input
- only when its condition parser fails.
+ {=WHEN} and {=UNLESS} behave like {=IF} with an implicit {PROGN} and no
+ _else clause_. Just like {WHEN} and {UNLESS} in _Common Lisp._
+
+ {=NOT} takes one parser and, if it would _fail_, consumes and returns
+ the next item from input.
 
  {=PROG1} and {=PROG2} behave like {=AND} but return the result of the
- first or second parser respectively. {MAYBE} applies a parser and
- succeeds even if the parser fails.
+ first or second parser respectively. {=MAYBE} applies a parser and
+ succeeds even if the parser fails. {=LIST} also behaves like {=AND} but
+ collects all results in a list.
 
- {=SATISFIES} applies {(ITEM)} but only succeeds when the result returned
- by {(ITEM)} satisfies a given predicate. {=EQL}, {ONE-OF}, {NONE-OF} and
- {RANGE} are like {=SATISFIES} but require the result returned by
- {(ITEM)} to be {EQL} to a given value, {EQL} to one or no value in a
- given list or to fall inside a range defined by a predicate and a lower
- and upper bound respectively.
+ {=SATISFIES} applies {(=ITEM)} but only succeeds when the result
+ returned by {(=ITEM)} satisfies a given predicate. {=EQL}, {=ONE-OF},
+ {=NONE-OF} and {=RANGE} are like {=SATISFIES} but require the result
+ returned by {(=ITEM)} to be {EQL} to a given value, {EQL} to one or none
+ of the values in a given list or to be inside a range defined by a
+ predicate and a lower and upper bound respectively.
 
- {ONE-OR-MORE}, {ZERO-OR-MORE}, {ONE-TO}, {ZERO-TO}, {AT-LEAST} and
- {EXACTLY} do as their names suggest and {BIND} a parser multiple
- successive times in various variants.
+ {=ONE-OR-MORE}, {=ZERO-OR-MORE}, {=ONE-TO}, {=ZERO-TO}, {=AT-LEAST} and
+ {=EXACTLY} do as their names suggest and apply parsers multiple
+ times in various variants.
 
  {=FUNCALL} applies a parser and returns the result of a given function
- instead of the parser's result.
+ called on the parsers result.
 
 >
 
@@ -96,20 +102,20 @@
 
  {=CHARACTER} behaves like {=EQL} but uses {CHAR=} instead of {EQL}.
  {=STRING} is similar too as it parses a given string or fails.
- {STRING-OF} parses a string of characters parsed by a given parser.
+ {=STRING-OF} parses a string of characters parsed by a given parser.
 
- {WHITESPACE} and {SKIP-WHITESPACE} parse or skip characters commonly
- considered as whitespace respectively. {NEWLINE} parses the newline
- character and {LINE} parses a string of characters terminated by newline
- or end of input.
+ {=WHITESPACE} and {=SKIP-WHITESPACE} parse or skip characters commonly
+ considered as whitespace respectively. {=NEWLINE} parses the newline
+ character and {=LINE} parses a string of characters terminated by
+ newline or end of input.
 
 >
 
 
 < Parsers for numerals
 
- {DIGIT} parses a number from a digit character. {NATURAL-NUMBER} and
- {INTEGER-NUMBER} both parse numbers from numeral strings while the
+ {=DIGIT} parses a number from a digit character. {=NATURAL-NUMBER} and
+ {=INTEGER-NUMBER} both parse numbers from numeral strings while the
  latter also understands a leading dash for negativity. All three parses
  accept an optional radix argument.
 

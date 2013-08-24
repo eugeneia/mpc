@@ -9,22 +9,21 @@
   "Bound to input during =FAIL.")
 
 (defun =end-of-input ()
-  "Returns a parser which succeeds when input is empty and fails
-otherwise."
+  "Succeeds when input is empty and fail otherwise."
   (declare (optimize (speed 3)))
   (lambda (input)
     (when (input-empty-p input)
       (list (cons t input)))))
 
 (defun =result (value)
-  "Returns a parser that always returns VALUE without consuming input."
+  "Always succeed without consuming input and return VALUE ."
   (declare (optimize (speed 3)))
   (lambda (input)
     (list (cons value input))))
 
 (defmacro =fail (&rest handling)
-  "Returns a parser which fails and optionally executes HANDLING.
-GET-INPUT-POSITION may be called inside HANDLING."
+  "Fail and optionally execute HANDLING. GET-INPUT-POSITION may be called
+inside HANDLING."
   (if handling
       (let ((input (gensym "INPUT")))
 	`(lambda (,input)
@@ -34,50 +33,49 @@ GET-INPUT-POSITION may be called inside HANDLING."
       '(constantly nil)))
 
 (defun =item ()
-  "Returns a parser which consumes and returns the next item from input
-or fails if input is empty."
+  "Consume and return the next item from input or fail if input is empty."
   (lambda (input)
     (unless (input-empty-p input)
       (list (cons (input-first input)
 		  (input-rest input))))))
 
 (defun =bind (parser make-parser)
-  "Returns a parser that first applies PARSER to the input, returning a
-list of {(VALUE . INPUT)} pairs. MAKE-PARSER is then applied to each
-VALUE and the resulting parser is then applied to each INPUT. The
-returned lists of pairs are then concatenated and returned."
+  "Apply PARSER. For each resulting {(VALUE . INPUT)} pair apply
+MAKE-PARSER to each VALUE and apply the resulting parser to each
+INPUT. Return the concatenated results. For more info see
+[parser-combinators-tutorial.html]."
   (declare (optimize (speed 3)))
   (lambda (input)
     (loop for (value . input) in (funcall parser input)
        append (funcall (funcall make-parser value) input))))
 
 (defun =plus (&rest parsers)
-  "The non-deterministic choice combinator. Returns a parser that applies
-PARSERS to input and returns a list of their results."
+  "The non-deterministic choice combinator. Apply PARSERS to input and
+returns a list of their results."
   (lambda (input)
     (loop for parser in parsers 
        append (funcall parser input))))
 
 ;;; =LET* is the natural syntax for lispers
 (defmacro =let* (bindings &body body)
-  "{LET*} for parsers. Returns a parser which =BINDs parsers in
-BINDINGS and which then executes BODY with the results bound to vars
-in BINDINGS. If var is {_} then the result is ignored. The last
-expression in BODY has to return a parser which is finally applied to
-input."
+  "A mix of =AND and LET*. Apply the parsers in BINDINGS as if by
+=AND and bind their results to the symbols in BINDINGS. If the symbol is
+{_} then ignore the result. Finally apply parsers in BODY with BINDINGS
+in an implicit PROGN. For more info see
+[parser-combinators-tutorial.html]."
   (if bindings
       (let ((symbol (first (first bindings))))
 	`(=bind ,@(cdr (first bindings))
-	       (lambda (,symbol)
-		 ,@(when (string-equal (symbol-name symbol) "_")
-			 `((declare (ignore ,symbol))))
-	       (=let* ,(cdr bindings)
+                (lambda (,symbol)
+                  ,@(when (string-equal (symbol-name symbol) "_")
+                          `((declare (ignore ,symbol))))
+                  (=let* ,(cdr bindings)
 		 ,@body))))
       `(progn ,@body)))
 
 (defun =or (&rest parsers)
-  "Returns a parser that applies PARSERS to input until a parser is
-successful or fails."
+  "Apply PARSERS to until a parser is successful and return its result or
+fail."
   (declare (optimize (speed 3)))
   (labels ((non-consing-or (parsers)
 	     (lambda (input)
@@ -89,14 +87,14 @@ successful or fails."
     (non-consing-or parsers)))
 
 (defun =binary-and (parser-a parser-b)
-  "Returns a parser which =BINDs PARSER-A and PARSER-B and fails if any
-of those fails, otherwise it returns the result of PARSER-B."
+  "=BIND PARSER-A and PARSER-B and fail if any of those fails. Otherwise
+return the result of PARSER-B."
   (=let* ((_ parser-a))
     parser-b))
 
 (defun =and (&rest parsers)
-  "Returns a parser which =BINDs PARSERS and which fails if any
-parser fails, otherwise it returns the result of the last parser."
+  "Apply PARSERS sequentially. If all PARSERS succeed return the last
+  PARSERS result. Otherwise fail."
   (let ((p (first parsers))
 	(ps (rest parsers)))
     (if ps
@@ -104,8 +102,7 @@ parser fails, otherwise it returns the result of the last parser."
 	(or p (=result nil)))))
 
 (defun =list (&rest parsers)
-  "Returns a parser which =BINDs PARSERS and which fails if any
-parser fails, otherwise it returns the results of PARSERS in a list."
+  "Apply PARSERS like =AND but return their results as a list."
   (if parsers 
       (=let* ((x (first parsers))
 	      (xs (apply '=list (rest parsers))))
@@ -113,50 +110,45 @@ parser fails, otherwise it returns the results of PARSERS in a list."
       (=result nil)))
 
 (defun =if (test-parser then-parser &optional (else-parser (=fail)))
-  "Returns a parser which applies THEN-PARSER to input if applying
-TEST-PARSER to input would succeed and which applies ELSE-PARSER
-otherwise."
+  "Apply THEN-PARSER if applying TEST-PARSER _would_ succeed. Apply
+ELSE-PARSER othwerwise."
   (lambda (input)
     (if (funcall test-parser input)
 	(funcall then-parser input)
 	(funcall else-parser input))))
 
 (defun =when (test-parser &rest parsers)
-  "Returns a parser which =BINDs PARSERS as if by =AND if applying
-TEST-PARSER to input would succeed, otherwise it fails."
+  "Apply PARSERS as if by =AND when TEST-PARSER _would_ succeed."
   (=if test-parser (apply #'=and parsers)))
 
 (defun =unless (test-parser &rest parsers)
-  "Returns a parser which =BINDs PARSERS as if by =AND unless
-applying TEST-PARSER to input would succeed, otherwise it fails."
+  "Apply PARSERS as if by =AND unless TEST-PARSER _would_ succeed."
   (=if test-parser (=fail) (apply #'=and parsers)))
 
 (defun =not (parser)
-  "Returns a parser which applies {(=ITEM)} to input unless PARSER
-would succeed, otherwise it fails."
+  "Appliy {(=ITEM)} to input unless PARSER _would_ succeed, otherwise
+fail."
   (=if parser (=fail) (=item)))
 
 (defun =prog1 (parser &rest parsers)
-  "Returns a parser which =BINDs PARSER and PARSERS as if by =AND
-but which returns the result of PARSER."
+  "Apply PARSER and PARSERS as if by =AND but return the result of
+PARSER."
   (=let* ((result parser)
 	  (_ (apply #'=and parsers)))
     (=result result)))
 
 (defun =prog2 (parser1 parser2 &rest parsers)
-  "Returns a parser which =BINDs PARSER1, PARSER2 and PARSERS as
-if by =AND but which returns the result of PARSER2."
+  "Apply PARSER1, PARSER2 and PARSERS as if by =AND but return the result
+of PARSER2."
   (=and parser1 (apply #'=prog1 parser2 parsers)))
 
 (defun =maybe (parser)
-  "Returns a parser which applies PARSER to input and which will always
-succeed."
+  "Apply PARSER and return its result. If PARSER fails return NIL
+(e.g. never fail)."
   (=or parser (=result nil)))
 
 (defun =satisfies (predicate)
-  "Returns a parser which applies {(=ITEM)} to input and which returns
-the result of {(=ITEM)} when it satisfies PREDICATE, otherwise it
-fails."
+  "Return next {(ITEM)} if it satisfies PREDICATE, othwerise fail."
   (=bind (=item)
 	(lambda (x)
 	  (if (funcall predicate x)
@@ -164,49 +156,48 @@ fails."
 	      (=fail)))))
 
 (defun =eql (x)
-  "Returns a parser which applies {(=ITEM)} to input and which returns
-the result of {(=ITEM)} when it is EQL to {X}, otherwise it fails."
+  "Return next {(ITEM)} if it is EQL to X, otherwise fail."
   (=satisfies (lambda (y) (eql x y))))
 
 (defun =one-of (list)
-  "Returns a parser which applies {(=ITEM)} to input and which returns
-the result of {(=ITEM)} when it is EQL to an item in LIST, otherwise
-it fails."
+  "Return next {(ITEM)} if it is EQL to any item in LIST, otherwise
+fail."
   (=let* ((item (=item)))
     (if (find item list :test #'eql)
 	(=result item)
 	(=fail))))
 
 (defun =none-of (list)
-  "Returns a parser which applies {(=ITEM)} to input and which returns
-the result of {(=ITEM)} when it is not EQL to any item in LIST,
-otherwise it fails."
+  "Return next {(ITEM)} if it is _not_ EQL to every item in LIST,
+otherwise fail."
   (=not (=one-of list)))
 
-(defun =range (from to &key (parser (=item)) (predicate 'char<=))
-  "Returns a parser which applies PARSER to input and which returns the
-result of PARSER when it matches the range defined by FROM, TO and
-PREDICATE, otherwise it fails."
+(defun =range (from to &key (parser (=item)) (predicate #'char<=))
+  "Return next {(ITEM)} if it it matches the range defined by FROM, TO
+and PREDICATE, otherwise fail. PARSER defaults to {(=ITEM)} and PREDICATE
+defaults to {#'CHAR<=}."
   (=let* ((char parser))
     (if (funcall predicate from char to)
 	(=result char) 
 	(=fail))))
 
 (defun =one-or-more (parser)
-  "Returns a parser which =BINDs PARSER successfully one or more times
-and which returns its results in a list, otherwise it fails."
+  "Return a list of results for each time PARSER can successfully be
+applied in sequence. Fail if PARSER can not be applied successfully at
+least once. "
   (=let* ((x parser)
 	  (y (=zero-or-more parser)))
     (=result (cons x y))))
 
 (defun =zero-or-more (parser)
-  "Returns a parser which =BINDs PARSER successfully zero or more
-times and which returns its results in a list."
+  "Return a list of results for each time PARSER can successfully be
+applied in sequence."
   (=maybe (=one-or-more parser)))
 
 (defun =one-to (n parser)
-  "Returns a parser which =BINDs PARSER successfully one to {N} times
-and which returns its results in a list, otherwise it fails."
+  "Return a list of up to N results for each time PARSER can successfully be
+applied in sequence. But fail if PARSER can not be applied successfully
+at least once."
   (case n
     (0 (=result nil))
     (t (=let* ((x parser)
@@ -215,16 +206,16 @@ and which returns its results in a list, otherwise it fails."
 	 (=result (cons x xs))))))
 
 (defun =zero-to (n parser)
-  "Returns a parser which =BINDs PARSER successfully one to {N} times
-and which returns its results in a list."
+  "Return a list of up to N results for each time PARSER can successfully be
+applied in sequence."
   (=maybe (=one-to n parser)))
 
 (defun =at-least (n parser &key limit)
-  "Returns a parser which =BINDs PARSER successfully at least {N} but
-no more than LIMIT times and which returns its results in a list,
-otherwise it fails."
-  (case n 
-    (0 (if limit 
+  "Return a list of at least N and, if LIMIT is not NIL, up to LIMIT
+results for each time PARSER can successfully be applied in sequence,
+otherwise fail. LIMIT defaults to NIL."
+  (case n
+    (0 (if limit
 	   (if (zerop limit)
 	       (=result nil)
 	       (=zero-to limit parser))
@@ -234,21 +225,21 @@ otherwise it fails."
 	 (=result (cons x xs))))))
 
 (defun =exactly (n parser)
-  "Returns a parser which =BINDs PARSER successfully exactly {N}
-times and which returns its results in a list, otherwise it fails." 
+  "Return a list of exactly N results of applying PARSER sequentially."
   (=at-least n parser :limit n))
 
 (defun =funcall (parser function)
-  "Returns a parser which applies PARSER to input and which returns
-FUNCTION called on PARSER's successful result, otherwise it fails."
+  "Apply PARSER. If it succeds call FUNCTION on its result and return the
+resulting value. Otherwise fail."
   (=let* ((result parser))
     (if result
 	(=result (funcall function result))
 	(=fail))))
 
 (defun run (parser input-source &key (result #'caar))
-  "Runs a PARSER against INPUT-SOURCE, which can be an {array}, a
-{stream} or a {list}. RESULT is then called on the resulting list of
- {(result . input)} pairs."
+  "Run a PARSER against INPUT-SOURCE, which can be an ARRAY, a
+STREAM or a LIST. Then call RESULT on the resulting list of {(VALUE
+. INPUT)} pairs. RESULT defaults to {#'CAAR} (e.g. return the first
+VALUE)."
   (let ((*input-at-run* (make-input input-source)))
     (funcall result (funcall parser *input-at-run*))))

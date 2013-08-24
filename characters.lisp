@@ -5,16 +5,18 @@
 (defparameter *whitespace* '(#\Tab #\Newline #\Vt #\Ff #\Return #\Space)
   "Whitespace characters.")
 
-(defun =character (x &optional (case-sensitive-p t))
-  "Returns a parser which parses character {X} with respect to
-CASE-SENSITIVE-P, otherwise it fails."
+(defun =character (character &optional (case-sensitive-p t))
+  "Consume and return CHARACTER or fail. If CASE-SENSIVE-P is _true_ then
+CHAR= is used for comparison, otherwise its case insensitive counterpart
+CHAR-EQUAL is used. CASE-SENSISTIVE-P is T by default."
   (if case-sensitive-p
-      (=satisfies (lambda (y) (char= x y)))
-      (=satisfies (lambda (y) (char-equal x y)))))
+      (=satisfies (lambda (x) (char=      x character)))
+      (=satisfies (lambda (x) (char-equal x character)))))
 
 (defun =string (string &optional (case-sensitive-p t))
-  "Returns a parser which parses STRING with respect to
-CASE-SENSITIVE-P, otherwise it fails."
+  "Consume and return STRING of characters. If CASE-SENSIVE-P is _true_
+then CHAR= is used for comparison, otherwise its case insensitive
+counterpart CHAR-EQUAL is used. CASE-SENSISTIVE-P is T by default."
   (if (= 0 (length string))
       (=result "")
       (=let* ((_ (=character (aref string 0) case-sensitive-p))
@@ -23,30 +25,30 @@ CASE-SENSITIVE-P, otherwise it fails."
 	(=result string))))
 
 (defun =string-of (parser)
-  "Returns a parser which successfully =BINDs PARSER one or more
-times and which returns its results in a string, otherwise it fails."
-  (=bind (=one-or-more parser)
-	(lambda (s) (=result (coerce s 'string)))))
+  "Apply PARSER as if by =ONE-OR-MORE and return the results coerced to a
+string."
+  (=let* ((characters (=one-or-more parser)))
+    (=result (coerce characters 'string))))
 
 (defun =whitespace ()
-  "Returns a parser which parses {#\\\\Tab}, {#\\\\Newline}, {#\\\\Vt},
-{#\\\\Ff}, {#\\\\Return} or {#\\\\Space}."
+  "Consume and return one of {#\\\\Tab}, {#\\\\Newline}, {#\\\\Vt},
+{#\\\\Ff}, {#\\\\Return} or {#\\\\Space}, otherwise fail."
   (=one-of *whitespace*))
 
 (defun =skip-whitespace (parser)
-  "Returns a parser which =BINDs {(=WHITESPACE)} zero or more times and
-PARSER, otherwise it fails."
+  "Apply {(=WHITESPACE)} zero or more times, then apply PARSER,
+effectively discarding leading whitespace characters."
   (=and (=zero-or-more (=whitespace)) parser))
 
 (defun =newline ()
-  "Returns a parser which parses {#\\\\Newline}, otherwise it =FAILs."
+  "Parses {#\\\\Newline} or fail."
   (=character #\Newline))
 
 (defun =line (&optional keep-newline)
-  "Returns a parser which parses zero or more characters terminated by a
-newline character or end of input and which returns them in a string,
-otherwise it fails. If KEEP-NEWLINE is not NIL the eventual newline
-character is kept in the string."
+  "Consume and return zero or more characters terminated by a
+newline character or end of input as a string. When KEEP-NEWLINE is
+_true_ and the line is terminated by a newline character, include it in
+the returned string. KEEP-NEWLINE is NIL by default."
   (=let* ((line (=or (=string-of (=not (=or (=newline)
 					    (=end-of-input))))
 		     (=result "")))
