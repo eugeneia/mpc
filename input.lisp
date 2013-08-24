@@ -1,90 +1,146 @@
+;;;; Input primitives.
+
 (in-package :smug)
 
-(defgeneric input-empty-p (input)  
-  (:method ((input cl:string))
-    (zerop (length input))))
+
+;;; Input interface
+
+(defgeneric make-input (source)
+  (:documentation "Returns input object for {SOURCE}."))
+
+(defgeneric input-position (input)
+  (:documentation "Returns index position of {INPUT}."))
+
+(defgeneric input-element-type (input)
+  (:documentation "Returns element type of {INPUT}."))
+
+(defgeneric input-empty-p (input)
+  (:documentation "Predicate to test if {INPUT} is empty."))
 
 (defgeneric input-first (input)
-  (:method ((input cl:string))
-    (declare (optimize (speed 3) (safety 0)))   
-    (aref input 0)))
+  (:documentation "Returns first element of {INPUT}."))
 
 (defgeneric input-rest (input)
-  (:method ((input cl:string))
-    (declare (optimize (speed 3)))
-    (multiple-value-bind (string index)
-	(array-displacement input)
-      (let ((original-string (or string input)))
-    (make-array (1- (length input))
-		:displaced-to original-string
-		:displaced-index-offset (1+ index)
-		:element-type 'character)))))
+  (:documentation "Returns {INPUT} with its first element stripped."))
 
-(defgeneric input-error (input message &rest args)
-  (:method (input message &rest args) (error message args)))
 
-(define-condition input-error (simple-error) ((input :accessor input-error-input :initarg :input)))
+;;; Generic INPUT-ELEMENT-TYPE implementation
 
-(defstruct (file-stream-input (:constructor %make-file-input))
-  stream (file-position 0))
+(defmethod input-element-type ((input t))
+  nil)
 
-(defmethod input-first (input &aux (stream (file-stream-input-stream input)))
-  (file-position stream (file-stream-input-file-position input))
-  (read-char stream))
 
-(defmethod input-rest (input) 
-  (%make-file-input :stream (file-stream-input-stream input)
-		    :file-position (1+ (file-stream-input-file-position input))))
+;;; Generic index implementation
 
-(defmethod input-empty-p (input)
-  (= (file-stream-input-file-position input) (file-length (file-stream-input-stream input))))
+(deftype array-index ()
+  "Array index type used in index structure."
+  `(integer 0 ,array-dimension-limit))
 
-(defun make-file-stream-input (stream)
-  (%make-file-input :stream stream))
+(defstruct index
+  "Generic index."
+  (position
+   0
+   :type array-index
+   :read-only t))
 
-(defmethod input-error ((input file-stream-input) message &rest args)
-  (error 'input-error 
-	 :input input
-	 :format-control "Error at ~A : ~A" 
-	 :format-arguments (list (file-stream-input-file-position input) 
-				 (apply #'format nil message args))))
-  
-(defstruct (line-input (:constructor %make-line-input)) 
-  string (index 0) (line-count 1))
+(defmethod input-position ((input index))
+  (index-position input))
 
-(defun make-line-input (string)
-  (%make-line-input :string string))
 
-(defmethod input-empty-p ((input line-input))
-  (= (line-input-index input)
-     (1- (length (line-input-string input)))))
+;;; Implementation for lists
 
-(defmethod input-first ((input line-input))
-  (aref (line-input-string input) 
-       (line-input-index input)))
+(defstruct (index-list (:include index))
+  "Index list."
+  (list
+   (error "Must supply LIST.")
+   :type list
+   :read-only t))
 
-(defmethod input-rest  ((input line-input))
-  (%make-line-input :index (1+ (line-input-index input))
-		    :string (line-input-string input)
-		    :line-count (line-input-line-count input)))
+(defmethod make-input ((input list))
+  (make-index-list :list input))
 
-(define-condition input-error (simple-error) ((input :accessor input-error-input :initarg :input)))
+(defmethod input-empty-p ((input index-list))
+ (declare (optimize (speed 3) (safety 0)))
+  (not (index-list-list input)))
 
-(defmethod input-error ((input line-input) message &rest args)
-  (error 'input-error 
-	 :input input
-	 :format-control "Error on line ~A : ~A" 
-	 :format-arguments (list (line-input-line-count input) (apply #'format nil message args))))
+(defmethod input-first ((input index-list))
+  (declare (optimize (speed 3) (safety 0)))
+  (first (index-list-list input)))
 
-(defun fail (&key (error nil))
-  (if error 
-      (lambda (input)
-	(input-error input error)
-	(funcall (result t) input))
-      (constantly nil)))
-	 
-(defun increment-line-count (&optional (delta 1))
-  (lambda (input) 
-    (funcall (result (incf (line-input-line-count input) delta))
-	     input)))
+(defmethod input-rest ((input index-list))
+  (declare (optimize (speed 3)))
+  (make-index-list :list (rest (index-list-list input))
+		   :position (1+ (the array-index
+				   (index-position input)))))
 
+
+;;; Implementation for arrays
+
+(defstruct (index-array (:include index))
+  "Index array."
+  (array
+   (error "Must supply ARRAY.")
+   :type array
+   :read-only t))
+
+(defstruct (index-simple-array (:include index-array))
+  "Index simple array.")
+
+(defstruct (index-simple-string (:include index-array))
+  "Index simple string.")
+
+(defmethod make-input ((input array))
+  (make-index-array :array input))
+
+(defmethod make-input ((input simple-array))
+  (make-index-simple-array :array input))
+
+(defmethod make-input ((input simple-string))
+  (make-index-simple-string :array input))
+
+(defmethod input-element-type ((input index-array))
+  (array-element-type (index-array-array input)))
+
+(defmethod input-empty-p ((input index-array))
+  (declare (optimize (speed 3) (debug 0) (safety 0)))
+  (= (the array-index (index-position input))
+     (the array-index (length (the array (index-array-array input))))))
+
+(defmethod input-first ((input index-array))
+  (declare (optimize (speed 3) (debug 0) (safety 0)))
+  (aref (the array (index-array-array input)) (index-position input)))
+
+(defmethod input-first ((input index-simple-array))
+  (declare (optimize (speed 3) (debug 0) (safety 0)))
+  (aref (the simple-array (index-array-array input)) (index-position input)))
+
+(defmethod input-first ((input index-simple-string))
+  (declare (optimize (speed 3) (debug 0) (safety 0)))
+  (aref (the simple-string (index-array-array input)) (index-position input)))
+
+(defmethod input-rest ((input index-array))
+  (declare (optimize (speed 3) (debug 0) (safety 0)))
+  (make-index-array :array (index-array-array input)
+		    :position (1+ (the array-index
+				    (index-position input)))))
+
+(defmethod input-rest ((input index-simple-array))
+  (declare (optimize (speed 3) (debug 0) (safety 0)))
+  (make-index-simple-array
+   :array (index-array-array input)
+   :position (1+ (the array-index
+		   (index-position input)))))
+
+(defmethod input-rest ((input index-simple-string))
+  (declare (optimize (speed 3) (debug 0) (safety 0)))
+  (make-index-simple-string :array (index-array-array input)
+			    :position (1+ (the array-index
+					    (index-position input)))))
+
+
+;;; Implementation for streams
+
+(defmethod make-input ((input file-stream))
+  (let ((array (make-array (file-length input)
+			   :element-type (stream-element-type input))))
+    (make-input (subseq array 0 (read-sequence array input)))))

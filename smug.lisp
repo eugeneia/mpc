@@ -1,353 +1,254 @@
+;;;; Monadic parser primitives and utility parsers.
+
 (in-package :smug)
 
-(defun result (value)
+(defvar *input-at-run* nil
+  "Bound to intial input during RUN.")
+
+(defvar *input-during-fail* nil
+  "Bound to input during =FAIL.")
+
+(defun =end-of-input ()
+  "Returns a parser which succeeds when input is empty and fails
+otherwise."
+  (declare (optimize (speed 3)))
+  (lambda (input)
+    (when (input-empty-p input)
+      (list (cons t input)))))
+
+(defun =result (value)
+  "Returns a parser that always returns VALUE without consuming input."
   (declare (optimize (speed 3)))
   (lambda (input)
     (list (cons value input))))
 
-(defun fail (&key (error nil))
-  (if error 
-      (lambda (input)
-	(declare (ignore input)) 
-	(error error))
-      (constantly nil)))
+(defmacro =fail (&rest handling)
+  "Returns a parser which fails and optionally executes HANDLING.
+GET-INPUT-POSITION may be called inside HANDLING."
+  (if handling
+      (let ((input (gensym "INPUT")))
+	`(lambda (,input)
+	   (let ((*input-during-fail* ,input))
+	     ,@handling)
+	   nil))
+      '(constantly nil)))
 
-(defun item ()
+(defun =item ()
+  "Returns a parser which consumes and returns the next item from input
+or fails if input is empty."
   (lambda (input)
     (unless (input-empty-p input)
       (list (cons (input-first input)
 		  (input-rest input))))))
 
-(defun bind (parser function)
+(defun =bind (parser make-parser)
+  "Returns a parser that first applies PARSER to the input, returning a
+list of {(VALUE . INPUT)} pairs. MAKE-PARSER is then applied to each
+VALUE and the resulting parser is then applied to each INPUT. The
+returned lists of pairs are then concatenated and returned."
+  (declare (optimize (speed 3)))
   (lambda (input)
-    (loop :for (value . input) :in (funcall parser input)
-          :append (funcall (funcall function value) input))))
+    (loop for (value . input) in (funcall parser input)
+       append (funcall (funcall make-parser value) input))))
 
-(defun run (parser input &key (result #'caar))
-  (funcall result (funcall parser input)))
-
-(defun =satisfies (predicate)
-  (bind (item) 
-	(lambda (x) 
-	  (if (funcall predicate x)
-	      (result x)
-	      (fail)))))
-
-(defun plus (&rest parsers)
+(defun =plus (&rest parsers)
+  "The non-deterministic choice combinator. Returns a parser that applies
+PARSERS to input and returns a list of their results."
   (lambda (input)
-    (loop :for parser in parsers 
-          :append (funcall parser input))))
+    (loop for parser in parsers 
+       append (funcall parser input))))
 
-;;;; PARSER-LET* is the natural syntax for lispers
+;;; =LET* is the natural syntax for lispers
 (defmacro =let* (bindings &body body)
+  "{LET*} for parsers. Returns a parser which =BINDs parsers in
+BINDINGS and which then executes BODY with the results bound to vars
+in BINDINGS. If var is {_} then the result is ignored. The last
+expression in BODY has to return a parser which is finally applied to
+input."
   (if bindings
       (let ((symbol (first (first bindings))))
-	`(bind ,@(cdr (first bindings))
+	`(=bind ,@(cdr (first bindings))
 	       (lambda (,symbol)
 		 ,@(when (string-equal (symbol-name symbol) "_")
-			 `((declare (ignorable ,symbol))))
+			 `((declare (ignore ,symbol))))
 	       (=let* ,(cdr bindings)
 		 ,@body))))
       `(progn ,@body)))
 
-(defun end-of-input ()
-  (lambda (input)
-    (when (input-empty-p input)
-      (list (cons t input)))))
-
-
 (defun =or (&rest parsers)
+  "Returns a parser that applies PARSERS to input until a parser is
+successful or fails."
   (declare (optimize (speed 3)))
   (labels ((non-consing-or (parsers)
-	   (lambda (input)
-	     (or (funcall (the function (first parsers)) input) 
-		 (when (rest parsers)
-		   (funcall (the function (non-consing-or (rest parsers))) input))))))
+	     (lambda (input)
+	       (or (funcall (the function (first parsers)) input)
+		   (when (rest parsers)
+		     (funcall (the function
+				(non-consing-or (rest parsers)))
+			      input))))))
     (non-consing-or parsers)))
 
-(defun =and (p1 &rest ps)
-  (=let* ((result p1))
+(defun =binary-and (parser-a parser-b)
+  "Returns a parser which =BINDs PARSER-A and PARSER-B and fails if any
+of those fails, otherwise it returns the result of PARSER-B."
+  (=let* ((_ parser-a))
+    parser-b))
+
+(defun =and (&rest parsers)
+  "Returns a parser which =BINDs PARSERS and which fails if any
+parser fails, otherwise it returns the result of the last parser."
+  (let ((p (first parsers))
+	(ps (rest parsers)))
     (if ps
-	(apply #'=and ps)
-	(result result))))    
-
-(defun =not (parser)
-  (lambda (input)
-    (cl:when (cl:not (funcall parser input))
-      (list (cons t input)))))
-
-(defun =unless (parser &rest parsers)
-  (apply #'=and (=not parser) parsers))
-
-(defun =char (x)
-  (=satisfies (lambda (y) (eql x y))))
-
-(defun before (parser end-parser)
-  (=let* ((i parser)
-	  (result (lambda (input)
-		    (if (funcall end-parser input)
-			(list (cons i input))
-			nil))))
-    (result result)))
-
-(defun =string (string)
-  (if (input-empty-p string)
-      (result "")
-      (=let* 
-	  ((_ (=char (input-first string)))
-	   (_ (=string (input-rest string))))
-	(result string))))
-
-(defun =digit-char (&optional (base 10))
-  (=satisfies (lambda (x) (digit-char-p x base))))
-
-(defun digit ()
-  (=let* ((char (item))
-	  (digit (result (digit-char-p char))))
-    (if digit (result digit) (fail))))
-
-(defun natural-number (&optional (base 10))
-  (labels ((evaluate (chars)
-	     (reduce #'op (mapcar (lambda (c) (digit-char-p c base)) chars)))
-	   (op (m n)
-	     (+ (* base m) n)))
-    (=let* ((xs (one-or-more (=digit-char base))))
-      (result (evaluate xs)))))
-
-(defun sophisticated-int ()
-  (flet ((op () 
-	   (plus (=let* ((_ (=char #\-)))
-		   (result #'-))
-		 (result #'identity))))
-    (=let* ((op (op))
-		  (n (natural-number)))
-      (result (funcall op n)))))
-
-(defun int ()
-  (sophisticated-int))
-
-(defun bracket (open-parser body-parser close-parser)
-  (=let* ((_ open-parser)
-	       (x body-parser)
-	       (_ close-parser))
-    (result x)))
-
-(defun none-of (char-bag)
-  (=let* ((char (item)))
-    (if (not (find char char-bag))
-	(result char)
-	(fail))))
-
-(defun one-of (char-bag)
-  (=let* ((char (item)))
-    (if (find char char-bag)
-	(result char)
-	(fail))))    
-
-(defun text (&optional (parser (item)))
-  (=let* ((text (one-or-more parser)))
-    (result (coerce text 'cl:string))))
-
-(defun eof (&optional (result :eof))
-  (bind (end-of-input) 
-	(lambda (_) (declare (ignore _ )) 
-		(result result))))
-
-(defun zero-or-more-recursive (parser &optional (combinator #'=or))
-  (funcall (the function combinator)
-   (=let* ((x (the function parser))
-	   (y (=or (zero-or-more-recursive parser combinator)
-		   (result nil))))
-     (result (cons x y)))
-   (result nil)))
-
-(defun zero-or-more (parser)
-  (lambda (input) :result #'identity
-    (loop 
-       :for value := (funcall parser input)
-       :for ((result . i)) := value
-       :while value :collect result :into results 
-       :do (setf input i)				     
-       :finally (return (list (cons results input))))))
-
-
-(defun one-or-more (parser)
-  (=let* ((x parser)
-	  (y (zero-or-more parser)))
-    (result (cons x y))))
-
-(defun one-to (n parser)
-  (case n
-    (0 (result nil))
-    (t (=let* ((x parser)
-	       (xs (=or (one-to (1- n) parser)
-			(result nil))))
-	 (result (cons x xs))))))
-
-(defun zero-to (n parser)
-  (maybe (one-to n parser)))
-
-
-(defun at-least (n parser &key limit)
-  (case n 
-    (0 (if limit 
-	   (if (zerop limit)
-	       (result nil)
-	       (zero-to limit parser))
-	   (zero-or-more parser)))
-    (t (=let* ((x parser)
-	       (xs (at-least (1- n) parser :limit (1- limit))))
-	 (result (cons x xs))))))
-
-(defun exactly (n parser)
-  (at-least n parser :limit n))
-	 
-    
-(defun line ()
-  (=or 
-   (=let* ((xs (text (none-of '(#\Newline))))
-	   (end (=or (end-of-input) 
-		     (=char #\Newline))))       
-     (result 
-      (list* :line xs (list end))))
-   (bind (=char #\Newline) 
-	 (constantly 
-	  (result '(:line "" :terminator #\Newline))))))
-
-(defun =progn (&rest parsers)
-  (apply #'=and parsers))
-
-(defun =prog1 (parser &rest parsers)
-  (=let* ((result parser)
-	  (_ (apply #'=and parsers)))
-    (result result)))
-
-(defun =prog2 (parser1 parser2 &rest parsers)
-  (=and parser1 (apply #'=prog1 parser2 parsers)))
-
-(defun string-of (parser)
-  (bind parser (lambda (s) (result (coerce s 'string)))))
-
-(defun whitespace ()
-  (one-of '(#\Tab #\Newline #\Space #\Return #\Linefeed)))
+	(=binary-and p (apply #'=and ps))
+	(or p (=result nil)))))
 
 (defun =list (&rest parsers)
+  "Returns a parser which =BINDs PARSERS and which fails if any
+parser fails, otherwise it returns the results of PARSERS in a list."
   (if parsers 
       (=let* ((x (first parsers))
 	      (xs (apply '=list (rest parsers))))
-	(result (cons x xs)))
-      (result nil)))
+	(=result (cons x xs)))
+      (=result nil)))
 
-(defun call (function-designator &rest args)
-  (result (apply function-designator args)))
-	      
+(defun =if (test-parser then-parser &optional (else-parser (=fail)))
+  "Returns a parser which applies THEN-PARSER to input if applying
+TEST-PARSER to input would succeed and which applies ELSE-PARSER
+otherwise."
+  (lambda (input)
+    (if (funcall test-parser input)
+	(funcall then-parser input)
+	(funcall else-parser input))))
 
-(defun skip-whitespace (parser)
-  (=let* ((_ (zero-or-more (whitespace)))
-	  (v parser)
-	  (_ (zero-or-more (whitespace))))
-    (result v)))
+(defun =when (test-parser &rest parsers)
+  "Returns a parser which =BINDs PARSERS as if by =AND if applying
+TEST-PARSER to input would succeed, otherwise it fails."
+  (=if test-parser (apply #'=and parsers)))
 
-(defun maybe (parser)
-  (=or parser (result nil)))
+(defun =unless (test-parser &rest parsers)
+  "Returns a parser which =BINDs PARSERS as if by =AND unless
+applying TEST-PARSER to input would succeed, otherwise it fails."
+  (=if test-parser (=fail) (apply #'=and parsers)))
 
-(defun range (from to &key (parser (item)) (predicate 'char<=))
+(defun =not (parser)
+  "Returns a parser which applies {(=ITEM)} to input unless PARSER
+would succeed, otherwise it fails."
+  (=if parser (=fail) (=item)))
+
+(defun =prog1 (parser &rest parsers)
+  "Returns a parser which =BINDs PARSER and PARSERS as if by =AND
+but which returns the result of PARSER."
+  (=let* ((result parser)
+	  (_ (apply #'=and parsers)))
+    (=result result)))
+
+(defun =prog2 (parser1 parser2 &rest parsers)
+  "Returns a parser which =BINDs PARSER1, PARSER2 and PARSERS as
+if by =AND but which returns the result of PARSER2."
+  (=and parser1 (apply #'=prog1 parser2 parsers)))
+
+(defun =maybe (parser)
+  "Returns a parser which applies PARSER to input and which will always
+succeed."
+  (=or parser (=result nil)))
+
+(defun =satisfies (predicate)
+  "Returns a parser which applies {(=ITEM)} to input and which returns
+the result of {(=ITEM)} when it satisfies PREDICATE, otherwise it
+fails."
+  (=bind (=item)
+	(lambda (x)
+	  (if (funcall predicate x)
+	      (=result x)
+	      (=fail)))))
+
+(defun =eql (x)
+  "Returns a parser which applies {(=ITEM)} to input and which returns
+the result of {(=ITEM)} when it is EQL to {X}, otherwise it fails."
+  (=satisfies (lambda (y) (eql x y))))
+
+(defun =one-of (list)
+  "Returns a parser which applies {(=ITEM)} to input and which returns
+the result of {(=ITEM)} when it is EQL to an item in LIST, otherwise
+it fails."
+  (=let* ((item (=item)))
+    (if (find item list :test #'eql)
+	(=result item)
+	(=fail))))
+
+(defun =none-of (list)
+  "Returns a parser which applies {(=ITEM)} to input and which returns
+the result of {(=ITEM)} when it is not EQL to any item in LIST,
+otherwise it fails."
+  (=not (=one-of list)))
+
+(defun =range (from to &key (parser (=item)) (predicate 'char<=))
+  "Returns a parser which applies PARSER to input and which returns the
+result of PARSER when it matches the range defined by FROM, TO and
+PREDICATE, otherwise it fails."
   (=let* ((char parser))
     (if (funcall predicate from char to)
-	(result char) 
-	(fail))))
-	
-(defun org-block (&optional (level 0))
-  (=or (section level)
-       (simple-list)
-       (text-block (line))))
+	(=result char) 
+	(=fail))))
 
-(defun text-block (parser)
-  (=and (=not (section-heading))
-	parser))
+(defun =one-or-more (parser)
+  "Returns a parser which =BINDs PARSER successfully one or more times
+and which returns its results in a list, otherwise it fails."
+  (=let* ((x parser)
+	  (y (=zero-or-more parser)))
+    (=result (cons x y))))
 
-(defun section-heading (&optional (level 0))
-  (=let* ((indicator (at-least (1+ level)
-			       (=char #\*)))   
-	  (space (one-or-more (=char #\Space)))
-	  (name (line)))
-    (result (list :level (length indicator) 
-		  :indicator (cons indicator space)
-		  :name name))))
+(defun =zero-or-more (parser)
+  "Returns a parser which =BINDs PARSER successfully zero or more
+times and which returns its results in a list."
+  (=maybe (=one-or-more parser)))
 
-(defun section (&optional (level 0))
-  (=let* ((heading (section-heading level))
-	  (contents (zero-or-more 
-		     (org-block (1+ level)))))
-    (result (list :section :heading heading :contents contents))))
-	
-(defun section-line (&optional (level 0))
-  (=and (=not (section-heading level))
-	      (line)))
+(defun =one-to (n parser)
+  "Returns a parser which =BINDs PARSER successfully one to {N} times
+and which returns its results in a list, otherwise it fails."
+  (case n
+    (0 (=result nil))
+    (t (=let* ((x parser)
+	       (xs (=or (=one-to (1- n) parser)
+			(=result nil))))
+	 (=result (cons x xs))))))
 
-(defun list-item-content-line (indentation-level)
-  (=let* ((indentation (at-least indentation-level (whitespace)))
-	  (line (line)))
-    (result (cons indentation line))))
-	
-(defun list-item ()
-  (=let* ((pre-space (zero-or-more (whitespace)))
-	  (indicator (one-of "*+-"))
-	  (post-space (one-or-more (whitespace)))
-	  (first-line (line))
-	  (rest-lines (zero-or-more 
-		       (list-item-content-line 
-			(+ 1 (length pre-space)
-			     (length post-space))))))
-    (result (list :list-item
-		  :indicator (list pre-space
-				    indicator
-				    post-space)
-		  :content (cons (cons nil first-line) 
-				 rest-lines)))))
-    
-(defun simple-list ()
-  (=let* ((list (text-block (one-or-more (list-item)))))
-    (result (cons :unordered-list list))))
+(defun =zero-to (n parser)
+  "Returns a parser which =BINDs PARSER successfully one to {N} times
+and which returns its results in a list."
+  (=maybe (=one-to n parser)))
 
+(defun =at-least (n parser &key limit)
+  "Returns a parser which =BINDs PARSER successfully at least {N} but
+no more than LIMIT times and which returns its results in a list,
+otherwise it fails."
+  (case n 
+    (0 (if limit 
+	   (if (zerop limit)
+	       (=result nil)
+	       (=zero-to limit parser))
+	   (=zero-or-more parser)))
+    (t (=let* ((x parser)
+	       (xs (=at-least (1- n) parser :limit (1- limit))))
+	 (=result (cons x xs))))))
 
+(defun =exactly (n parser)
+  "Returns a parser which =BINDs PARSER successfully exactly {N}
+times and which returns its results in a list, otherwise it fails." 
+  (=at-least n parser :limit n))
 
+(defun =funcall (parser function)
+  "Returns a parser which applies PARSER to input and which returns
+FUNCTION called on PARSER's successful result, otherwise it fails."
+  (=let* ((result parser))
+    (if result
+	(=result (funcall function result))
+	(=fail))))
 
-
-    
-	
-		
-
-
-
-
-
-	      
-
-
-
-
-
-
-
-    
-
-
-
- 
-	
- 
-      
-     
-
-
-	      
-
-
-			 	  
-  
-
-
-
-
-
+(defun run (parser input-source &key (result #'caar))
+  "Runs a PARSER against INPUT-SOURCE, which can be an {array}, a
+{stream} or a {list}. RESULT is then called on the resulting list of
+ {(result . input)} pairs."
+  (let ((*input-at-run* (make-input input-source)))
+    (funcall result (funcall parser *input-at-run*))))

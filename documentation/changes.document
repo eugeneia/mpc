@@ -1,0 +1,12 @@
++ Input internals
++ =NOT now a parser instead of a predicate and uses =UNLESS
++ renamed TEXT to STRING-OF
++ removed ZERO-OR-MORE-RECURSIVE;
++ renamed =CHAR to =EQL and added =CHARACTER,
++ modified =STRING accordingly
++ changed =IF, implemented =UNLESS and =WHEN in terms of =IF
++ changed FAIL, added GET-INPUT-POSITION, =HANDLER-CASE and =RESTART-CASE
++ removed BEFORE, and BRACKET
++ split up into packages
++ edited tutorial(!)
++ Fixed bug in {=AND}, and probably afew more.
