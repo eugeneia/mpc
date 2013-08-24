@@ -22,7 +22,7 @@
 
 (defun test-=handler-case ()
   "Test =HANDLER-CASE."
-  (assert (= 42
-             (run (=handler-case (=fail (error "foo"))
-                                 (error () (=result 42)))
-                  ""))))
+  (assert (string= "bar"
+                   (run (=handler-case (=fail (error "foo"))
+                                       (error () (=string "bar")))
+                        "bar"))))
