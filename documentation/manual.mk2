@@ -13,6 +13,53 @@
 >
 
 
+< A brief practical example
+
+ Assuming you want to parse an email address in the form of
+ {<user>@<host>}. Let's start by defining our package:
+
+ #code #
+ (defpackage simple-address
+   (:use :cl :mpc :mpc.characters))
+
+ (in-package :simple-address)
+ #
+
+ Next we restrict the allowed characters in the {user} and {host} fields:
+
+ #code That is: Alphanumeric characters or any one of {-}, {_}, {.} and
+ {+}. Note how we use _Common Lisp's_ {ALPHANUMERICP}.#
+ (defun =address-character ()
+   (=or (=satisfies #'alphanumericp)
+        (=one-of '(#\- #\_ #\. #\+))))
+ #
+
+ Finally we use {=ADDRESS-CHARACTER} to implement a simple address
+ parser:
+
+ #code The {_} binding in the {=LET*} bindings is used to ignore the {@}
+ seperator. We return a list containing the {user} and {host} strings
+ using {=RESULT}.#
+ (defun =simple-address ()
+   (=let* ((user (=string-of (=address-character)))
+           (_ (=character #\@))
+           (host (=string-of (=address-character))))
+     (=result (list user host))))
+ #
+ 
+ We can now apply our grammar using {RUN}:
+
+ #code #
+ (run (=simple-address) "foo@example.com")
+  ⇒ ("foo" "example.com")
+
+ (run (=simple-address) "!!!@@@.com")
+  ⇒ NIL
+ #
+
+>
+
+
 < {RUN}: Main entry point.
 
  {RUN} is the main entry point to {MPC} and has to be used to run a
