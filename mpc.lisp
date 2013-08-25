@@ -42,8 +42,7 @@ inside HANDLING."
 (defun =bind (parser make-parser)
   "Apply PARSER. For each resulting {(VALUE . INPUT)} pair apply
 MAKE-PARSER to each VALUE and apply the resulting parser to each
-INPUT. Return the concatenated results. For more info see
-[parser-combinators-tutorial.html]."
+INPUT. Return the concatenated results."
   (declare (optimize (speed 3)))
   (lambda (input)
     (loop for (value . input) in (funcall parser input)
@@ -61,8 +60,7 @@ returns a list of their results."
   "A mix of =AND and LET*. Apply the parsers in BINDINGS as if by
 =AND and bind their results to the symbols in BINDINGS. If the symbol is
 {_} then ignore the result. Finally apply parsers in BODY with BINDINGS
-in an implicit PROGN. For more info see
-[parser-combinators-tutorial.html]."
+in an implicit PROGN."
   (if bindings
       (let ((symbol (first (first bindings))))
 	`(=bind ,@(cdr (first bindings))

@@ -7,8 +7,9 @@
  This manual summarizes the exported functions of the packages {MPC},
  {MPC.CHARACTERS}, and {MPC.NUMERALS}. Refer to [api.html] for detailed
  descriptions of specific functions. To learn more about {MPC}'s
- internals and monadic parser combinators in general read
- [parser-combinators-tutorial.html].
+ internals and monadic parser combinators in general read Drew Crampsie's
+ parser combinators tutorial over at
+ [https://github.com/drewc/smug/blob/master/smug.org].
 
 >
 

@@ -8,5 +8,4 @@
 + changed FAIL, added GET-INPUT-POSITION, =HANDLER-CASE and =RESTART-CASE
 + removed BEFORE, and BRACKET
 + split up into packages
-+ edited tutorial(!)
 + Fixed bug in {=AND}, and probably afew more.
