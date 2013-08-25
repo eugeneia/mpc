@@ -4,7 +4,7 @@
   :description
 "Monadic Parser Combinators for Common Lisp. MPC tries to be simple and
 practical while being powerful, well documented and fairly performant. A
-friendly fork from Drew Crampsies 'Smug' library."
+friendly fork of Drew Crampsies _Smug_ library."
   :author "Max Rottenkolber <max@mr.gy>"
   :license "GNU Affero General Public License"
   :components ((:file "packages")
