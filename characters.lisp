@@ -41,7 +41,7 @@ effectively discarding leading whitespace characters."
   (=and (=zero-or-more (=whitespace)) parser))
 
 (defun =newline ()
-  "Parses {#\\\\Newline} or fail."
+  "Parse {#\\\\Newline} or fail."
   (=character #\Newline))
 
 (defun =line (&optional keep-newline)

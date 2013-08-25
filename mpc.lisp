@@ -223,7 +223,8 @@ otherwise fail. LIMIT defaults to NIL."
 	 (=result (cons x xs))))))
 
 (defun =exactly (n parser)
-  "Return a list of exactly N results of applying PARSER sequentially."
+  "Return a list of exactly N results of applying PARSER sequentially,
+otherwise fail."
   (=at-least n parser :limit n))
 
 (defun =funcall (parser function)

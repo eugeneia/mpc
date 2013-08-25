@@ -13,10 +13,11 @@
      when (= i position) return (values line character)))
 
 (defun get-input-position ()
-  "Returns current position, line position and character position."
+  "Returns current position, line position and character position. May
+only be called inside =FAIL, =HANDLER-CASE or =RESTART-CASE."
   (unless *input-during-fail*
-    (error "GET-INPUT-POSITION may only be called inside a FAIL HANDLING
-body or a =HANDLER-CASE error clause."))
+    (error "GET-INPUT-POSITION may only be called inside =FAIL,
+=HANDLER-CASE and =RESTART-CASE."))
   (let ((position (input-position *input-during-fail*)))
     (if (eq (input-element-type *input-during-fail*) 'character)
 	(multiple-value-bind (line character)
