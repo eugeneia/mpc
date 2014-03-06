@@ -74,7 +74,7 @@ in an implicit PROGN."
 (defun =or (&rest parsers)
   "Apply PARSERS to until a parser is successful and return its result or
 fail."
-  (declare (optimize (speed 3)))
+  (declare (optimize speed))
   (labels ((non-consing-or (parsers)
 	     (lambda (input)
 	       (or (funcall (the function (first parsers)) input)
@@ -82,7 +82,9 @@ fail."
 		     (funcall (the function
 				(non-consing-or (rest parsers)))
 			      input))))))
-    (non-consing-or parsers)))
+    (if parsers
+        (non-consing-or parsers)
+        (constantly nil))))
 
 (defun =binary-and (parser-a parser-b)
   "=BIND PARSER-A and PARSER-B and fail if any of those fails. Otherwise
