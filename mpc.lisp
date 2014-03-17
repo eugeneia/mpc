@@ -240,7 +240,7 @@ resulting value. Otherwise fail."
 (defun run (parser input-source &key (result #'caar))
   "Run a PARSER against INPUT-SOURCE, which can be an ARRAY, a
 STREAM or a LIST. Then call RESULT on the resulting list of {(VALUE
-. INPUT)} pairs. RESULT defaults to {#'CAAR} (e.g. return the first
+. INPUT)} pairs. RESULT defaults to {#'CAAR} (e.g. returns the first
 VALUE)."
   (let ((*input-at-run* (make-input input-source)))
     (funcall result (funcall parser *input-at-run*))))
