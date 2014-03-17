@@ -28,8 +28,9 @@
 
  Next we restrict the allowed characters in the {user} and {host} fields:
 
- #code That is: Alphanumeric characters or any one of {-}, {_}, {.} and
- {+}. Note how we use _Common Lisp's_ {ALPHANUMERICP}.#
+ #code That is: Alphanumeric characters or any one of the _dash_,
+ _underscore_, _perioid_ and _plus_ chracters. Note how we use _Common
+ Lisp's_ {ALPHANUMERICP}.#
  (defun =address-character ()
    (=or (=satisfies #'alphanumericp)
         (=one-of '(#\- #\_ #\. #\+))))
@@ -64,7 +65,12 @@
 < {RUN}: Main entry point.
 
  {RUN} is the main entry point to {MPC} and has to be used to run a
- parser against input.
+ {PARSER} against an {INPUT-SOURCE}. The {INPUT-SOURCE} can be of type
+ {ARRAY}, {FILE-STREAM} or {LIST}. Because {MPC} supports
+ non-deterministic parsers which can return multiple results, {RUN}
+ accepts a keyword parameter {RESULT}, a function used to select the
+ desired return value. By default {RUN} returns the first result value
+ with {RESULT} defaulting to {#'CAAR}.
 
 >
 
@@ -96,8 +102,16 @@
 
 < {=LET*}: Syntax for lispers
 
- The {=LET*} macro offers a lispy syntax for {=BIND}. It also offers a
- way to ignore intermediate values.
+ The {=LET*} macro offers a lispy syntax for {=BIND}. It binds the
+ results of a sequence of parsers to variables and unless any parser
+ fails runs the body parsers. It also understands the special symbol {_}
+ (underscore) to signify _ignorable_ bindings, where ignorable means that
+ no symbol shall be bound to the value of a given parser ({=LET*}
+ nevertheless requires the parser to succeed).
+
+ #code Syntax of {=LET*}.#
+ (=LET* ((SYMBOL PARSER)...) PARSER...)
+ #
 
 >
 
