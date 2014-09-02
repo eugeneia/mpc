@@ -90,13 +90,14 @@
   "Index simple string.")
 
 (defmethod make-input ((input array))
-  (make-index-array :array input))
+  (etypecase input
+    (simple-array (make-index-simple-array :array input))
+    (array        (make-index-array :array input))))
 
-(defmethod make-input ((input simple-array))
-  (make-index-simple-array :array input))
-
-(defmethod make-input ((input simple-string))
-  (make-index-simple-string :array input))
+(defmethod make-input ((input string))
+  (etypecase input
+    (simple-string (make-index-simple-string :array input))
+    (string        (make-index-array :array input))))
 
 (defmethod input-element-type ((input index-array))
   (array-element-type (index-array-array input)))
@@ -108,15 +109,18 @@
 
 (defmethod input-first ((input index-array))
   (declare (optimize (speed 3) (debug 0) (safety 0)))
-  (aref (the array (index-array-array input)) (index-position input)))
+  (aref (the array (index-array-array input))
+        (index-position input)))
 
 (defmethod input-first ((input index-simple-array))
   (declare (optimize (speed 3) (debug 0) (safety 0)))
-  (aref (the simple-array (index-array-array input)) (index-position input)))
+  (aref (the simple-array (index-array-array input))
+        (index-position input)))
 
 (defmethod input-first ((input index-simple-string))
   (declare (optimize (speed 3) (debug 0) (safety 0)))
-  (aref (the simple-string (index-array-array input)) (index-position input)))
+  (aref (the simple-string (index-array-array input))
+        (index-position input)))
 
 (defmethod input-rest ((input index-array))
   (declare (optimize (speed 3) (debug 0) (safety 0)))
