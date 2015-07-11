@@ -159,7 +159,7 @@ return the result of PARSER-B."
   (let ((p (first parsers))
 	(ps (rest parsers)))
     (if ps
-	(=binary-and p (apply #'=and ps))
+	(=binary-and p (apply '=and ps))
 	(or p (=result nil)))))
 
 (defun =list (&rest parsers)
@@ -209,7 +209,7 @@ return the result of PARSER-B."
    {=when} applies _parsers_ as if by {=and} if _test-parser_ would
    succeed. Note that _test-parser_ is not actually applied to the
    input."
-  (=if test-parser (apply #'=and parsers)))
+  (=if test-parser (apply '=and parsers)))
 
 (defun =unless (test-parser &rest parsers)
   "*Arguments and Values:*
@@ -223,7 +223,7 @@ return the result of PARSER-B."
    {=unless} applies _parsers_ as if by {=and} if _test-parser_ would
    fail. Note that _test-parser_ is not actually applied to the
    input."
-  (=if test-parser (=fail) (apply #'=and parsers)))
+  (=if test-parser (=fail) (apply '=and parsers)))
 
 (defun =not (parser)
   "*Arguments and Values:*
@@ -251,7 +251,7 @@ return the result of PARSER-B."
    succeed, {=prog1} succeeds with _parser_'s result. Otherwise {=prog1}
    fails."
   (=let* ((result parser)
-	  (_ (apply #'=and parsers)))
+	  (_ (apply '=and parsers)))
     (=result result)))
 
 (defun =prog2 (parser1 parser2 &rest parsers)
@@ -268,7 +268,7 @@ return the result of PARSER-B."
    {=prog2} applies _parser1_, _parser2_ and _parsers_ sequentially. If
    they all succeed, {=prog2} succeeds with _parser2_'s result. Otherwise
    {=prog2} fails."
-  (=and parser1 (apply #'=prog1 parser2 parsers)))
+  (=and parser1 (apply '=prog1 parser2 parsers)))
 
 (defun =maybe (parser)
   "*Arguments and Values:*
@@ -320,7 +320,7 @@ return the result of PARSER-B."
    result if the item is {eql} to any _object_ in _list_. Fails if the
    input is empty."
   (=let* ((item (=item)))
-    (if (find item list :test #'eql)
+    (if (find item list :test 'eql)
 	(=result item)
 	(=fail))))
 
@@ -336,7 +336,7 @@ return the result of PARSER-B."
    Fails if the input is empty."
   (=not (=one-of list)))
 
-(defun =range (from to &key (parser (=item)) (predicate #'char<=))
+(defun =range (from to &key (parser (=item)) (predicate 'char<=))
   "*Arguments and Values:*
 
    _from_—an _object_.
@@ -470,7 +470,7 @@ return the result of PARSER-B."
 	(=result (funcall function result))
 	(=fail))))
 
-(defun run (parser input-source &key (result #'caar))
+(defun run (parser input-source &key (result 'caar))
   "*Arguments and Values:*
 
    _parser_—a _parser_.
