@@ -1,15 +1,14 @@
 < Abstract
 
- {MPC} is a monadic parser combinators library. It provides a toolbox of
+ MPC is a monadic parser combinators library. It provides a toolbox of
  predefined parsers, facilities for error handling and parses arrays,
  streams and lists.
 
- This manual summarizes the exported functions of the packages {MPC},
- {MPC.CHARACTERS}, and {MPC.NUMERALS}. Refer to [api.html] for detailed
- descriptions of specific functions. To learn more about {MPC}'s
- internals and monadic parser combinators in general read Drew Crampsie's
- parser combinators tutorial over at
- [https://github.com/drewc/smug/blob/master/smug.org].
+ This manual summarizes the exported functions of the packages {mpc},
+ {mpc.characters}, and {mpc.numerals}. Refer to the [MPC API](api.html)
+ for detailed descriptions of all exported symbols. To learn more about
+ MPC's internals and monadic parser combinators in general read
+ [Drew Crampsie's parser combinators tutorial](https://github.com/drewc/smug/blob/master/smug.org).
 
 >
 
@@ -26,22 +25,22 @@
  (in-package :simple-address)
  #
 
- Next we restrict the allowed characters in the {user} and {host} fields:
+ Next we restrict the allowed characters in the _user_ and _host_ fields:
 
  #code That is: Alphanumeric characters or any one of the _dash_,
- _underscore_, _perioid_ and _plus_ chracters. Note how we use _Common
- Lisp's_ {ALPHANUMERICP}.#
+ _underscore_, _perioid_ and _plus_ chracters. Note how we use Common
+ Lisp's {alphanumericp}.#
  (defun =address-character ()
    (=or (=satisfies #'alphanumericp)
         (=one-of '(#\- #\_ #\. #\+))))
  #
 
- Finally we use {=ADDRESS-CHARACTER} to implement a simple address
+ Finally we use {=address-character} to implement a simple address
  parser:
 
- #code The {_} binding in the {=LET*} bindings is used to ignore the {@}
+ #code The {_} binding in the {=let*} bindings is used to ignore the {@}
  seperator. We return a list containing the {user} and {host} strings
- using {=RESULT}.#
+ using {=result}.#
  (defun =simple-address ()
    (=let* ((user (=string-of (=address-character)))
            (_ (=character #\@))
@@ -49,7 +48,7 @@
      (=result (list user host))))
  #
  
- We can now apply our grammar using {RUN}:
+ We can now apply our grammar using {run}:
 
  #code #
  (run (=simple-address) "foo@example.com")
@@ -62,55 +61,55 @@
 >
 
 
-< {RUN}: Main entry point.
+< {run}: Main entry point.
 
- {RUN} is the main entry point to {MPC} and has to be used to run a
- {PARSER} against an {INPUT-SOURCE}. The {INPUT-SOURCE} can be of type
- {ARRAY}, {FILE-STREAM} or {LIST}. Because {MPC} supports
- non-deterministic parsers which can return multiple results, {RUN}
- accepts a keyword parameter {RESULT}, a function used to select the
- desired return value. By default {RUN} returns the first result value
- with {RESULT} defaulting to {#'CAAR}.
+ {run} is the main entry point to MPC and has to be used to run a
+ _parser_ against an _input-source_. The _input-source_ can be of type
+ {array}, {file-stream} or {list}. Because MPC supports non-deterministic
+ parsers which can return multiple results, {run} accepts a keyword
+ parameter _result_, a function used to select the desired return
+ value. By default {run} returns only the first result's value.
 
 >
 
 
 < Primitive parsers and combinators
 
- The core of {MPC} is made up of primitive parsers and combinators. A
+ The core of MPC is made up of primitive parsers and combinators. A
  parser is a function that accepts an input source and returns a list of
  pairs containing the result and the remaining input if it is successful
- and {NIL} othwerise to signal its failure to parent parsers. A
+ and {nil} othwerise to signal its failure to parent parsers. A
  combinator is a function which returns a parser. For consistency
  primitive parsers are defined as combinators that that always return the
  primitive parser.
 
- {=ITEM} is used to pop off an item from input. It fails when input is
- empty. {=RESULT} always succeeds with a given value without consuming
+ {=item} is used to pop off an item from the input. It fails if the input
+ is empty. {=result} always succeeds with a given value without consuming
  input. It is used to return arbitrary values from a parser. To check for
- end of input there is {=END-OF-INPUT} which succeeds only when input is
- empty.
+ end of input there is {=end-of-input} which succeeds only when the input
+ is empty.
 
- The primitive combinator {=BIND} permits applying parsers in sequence
- and offers a way to access their intermediate results. {=PLUS} lets us
- combine parsers in a non-deterministic way while {=OR} and {=AND} are
- deterministic alternatives. {=IF} allows for conditional application of
+ The primitive combinator {=bind} permits applying parsers in sequence
+ and offers a way to access their intermediate results. {=plus} lets us
+ combine parsers in a non-deterministic way while {=or} and {=and} are
+ deterministic alternatives. {=if} allows for conditional application of
  parsers.
 
 >
 
 
-< {=LET*}: Syntax for lispers
+< {=let*}: Syntax for lispers
 
- The {=LET*} macro offers a lispy syntax for {=BIND}. It binds the
+ The {=let*} macro offers a lispy syntax for {=bind}. It binds the
  results of a sequence of parsers to variables and unless any parser
  fails runs the body parsers. It also understands the special symbol {_}
  (underscore) to signify _ignorable_ bindings, where ignorable means that
- no symbol shall be bound to the value of a given parser ({=LET*}
+ no symbol shall be bound to the value of a given parser ({=let*}
  nevertheless requires the parser to succeed).
 
- #code Syntax of {=LET*}.#
- (=LET* ((SYMBOL PARSER)...) PARSER...)
+ The syntax of {=let*} is as follows:
+
+ {(=let* ((}_symbol_ _parser_ {)}_..._{)} _parser..._{)}
  #
 
 >
@@ -118,12 +117,12 @@
 
 < Error handling
 
- {=FAIL} simply always fails. It optionally accepts expressions to be
+ {=fail} simply always fails. It optionally accepts expressions to be
  evaluated at failure. Those expressions are permitted to call
- {GET-INPUT-POSITION}, which can be used to determine where a failure
+ {get-input-position}, which can be used to determine where a failure
  occurred.
 
- Two other error handling facilities {=HANDLER-CASE} and {=RESTART-CASE}
+ Two other error handling facilities {=handler-case} and {=restart-case}
  do what their names suggest. Instead of forms to be evaluated, every
  _case clause_ accepts parsers to be run.
 
@@ -132,29 +131,29 @@
 
 < More combinators
 
- {=WHEN} and {=UNLESS} behave like {=IF} with an implicit {PROGN} and no
- _else clause_. Just like {WHEN} and {UNLESS} in _Common Lisp._
+ {=when} and {=unless} behave like {=if} with an implicit {progn} and no
+ _else clause_. Just like {when} and {unless} in _Common Lisp._
 
- {=NOT} takes one parser and, if it would _fail_, consumes and returns
+ {=not} takes one parser and, if it would _fail_, consumes and returns
  the next item from input.
 
- {=PROG1} and {=PROG2} behave like {=AND} but return the result of the
- first or second parser respectively. {=MAYBE} applies a parser and
- succeeds even if the parser fails. {=LIST} also behaves like {=AND} but
+ {=prog1} and {=prog2} behave like {=and} but return the result of the
+ first or second parser respectively. {=maybe} applies a parser and
+ succeeds even if the parser fails. {=list} also behaves like {=and} but
  collects all results in a list.
 
- {=SATISFIES} applies {(=ITEM)} but only succeeds when the result
- returned by {(=ITEM)} satisfies a given predicate. {=EQL}, {=ONE-OF},
- {=NONE-OF} and {=RANGE} are like {=SATISFIES} but require the result
- returned by {(=ITEM)} to be {EQL} to a given value, {EQL} to one or none
+ {=satisfies} applies {(=item)} but only succeeds when the result
+ returned by {(=item)} satisfies a given predicate. {=eql}, {=one-of},
+ {=none-of} and {=range} are like {=satisfies} but require the result
+ returned by {(=item)} to be {eql} to a given value, {eql} to one or none
  of the values in a given list or to be inside a range defined by a
  predicate and a lower and upper bound respectively.
 
- {=ONE-OR-MORE}, {=ZERO-OR-MORE}, {=ONE-TO}, {=ZERO-TO}, {=AT-LEAST} and
- {=EXACTLY} do as their names suggest and apply parsers multiple
+ {=one-or-more}, {=zero-or-more}, {=one-to}, {=zero-to}, {=at-least} and
+ {=exactly} do as their names suggest and apply parsers multiple
  times in various variants.
 
- {=FUNCALL} applies a parser and returns the result of a given function
+ {=funcall} applies a parser and returns the result of a given function
  called on the parsers result.
 
 >
@@ -162,13 +161,13 @@
 
 < Parsers for character input
 
- {=CHARACTER} behaves like {=EQL} but uses {CHAR=} instead of {EQL}.
- {=STRING} is similar too as it parses a given string or fails.
- {=STRING-OF} parses a string of characters parsed by a given parser.
+ {=character} behaves like {=eql} but uses {char=} instead of {eql}.
+ {=string} is similar too as it parses a given string or fails.
+ {=string-of} parses a string of characters parsed by a given parser.
 
- {=WHITESPACE} and {=SKIP-WHITESPACE} parse or skip characters commonly
- considered as whitespace respectively. {=NEWLINE} parses the newline
- character and {=LINE} parses a string of characters terminated by
+ {=whitespace} and {=skip-whitespace} parse or skip characters commonly
+ considered as whitespace respectively. {=newline} parses the newline
+ character and {=line} parses a string of characters terminated by
  newline or end of input.
 
 >
@@ -176,8 +175,8 @@
 
 < Parsers for numerals
 
- {=DIGIT} parses a number from a digit character. {=NATURAL-NUMBER} and
- {=INTEGER-NUMBER} both parse numbers from numeral strings while the
+ {=digit} parses a number from a digit character. {=natural-number} and
+ {=integer-number} both parse numbers from numeral strings while the
  latter also understands a leading dash for negativity. All three parses
  accept an optional radix argument.
 

@@ -3,27 +3,42 @@
 (in-package :mpc)
 
 (defvar *input-at-run* nil
-  "Bound to intial input during RUN.")
+  "Bound to initial input during RUN.")
 
 (defvar *input-during-fail* nil
   "Bound to input during =FAIL.")
 
 (defun =end-of-input ()
-  "Succeeds when input is empty and fail otherwise."
+  "*Description:*
+
+   {=end-of-input} succeeds only if the input is empty."
   (declare (optimize (speed 3)))
   (lambda (input)
     (when (input-empty-p input)
       (list (cons t input)))))
 
 (defun =result (value)
-  "Always succeed without consuming input and return VALUE ."
+  "*Arguments and Values:*
+
+   _value_—an _object_.
+
+   *Description:*
+
+   {=result} always succeeds with _value_ as its result."
   (declare (optimize (speed 3)))
   (lambda (input)
     (list (cons value input))))
 
-(defmacro =fail (&rest handling)
-  "Fail and optionally execute HANDLING. GET-INPUT-POSITION may be called
-inside HANDLING."
+(defmacro =fail (&body handling)
+  "*Arguments and Values:*
+
+   _handling_—_forms_ to run when the parser is invoked.
+
+   *Description:*
+
+   {=fail} always fails. If supplied, the _handling forms_ will be run
+   when {=fail} is applied. The _handling forms_ may call
+   {get-input-position}."
   (if handling
       (let ((input (gensym "INPUT")))
 	`(lambda (,input)
@@ -33,34 +48,66 @@ inside HANDLING."
       '(constantly nil)))
 
 (defun =item ()
-  "Consume and return the next item from input or fail if input is empty."
+  "*Description:*
+
+   {=item} consumes the next item and succeeds with that item as its
+   result unless the input is empty. Fails if the input is empty."
   (lambda (input)
     (unless (input-empty-p input)
       (list (cons (input-first input)
 		  (input-rest input))))))
 
 (defun =bind (parser make-parser)
-  "Apply PARSER. For each resulting {(VALUE . INPUT)} pair apply
-MAKE-PARSER to each VALUE and apply the resulting parser to each
-INPUT. Return the concatenated results."
+  "*Arguments and Values:*
+
+   _parser_—a _parser_.
+
+   _make-parser_—a _function designator_ for a one-argument _function_
+   which returns a _parser_.
+
+   *Description:*
+
+   {=bind} applies _parser_ to the input. For each resulting {(value
+   . input)} pair {=bind} calls _make-parser_ with each _value_ and
+   applies the resulting parser to each _input_. {=bind} succeeds with
+   the concatenated results or fails if _parser_ fails."
   (declare (optimize (speed 3)))
   (lambda (input)
     (loop for (value . input) in (funcall parser input)
        append (funcall (funcall make-parser value) input))))
 
 (defun =plus (&rest parsers)
-  "The non-deterministic choice combinator. Apply PARSERS to input and
-returns a list of their results."
+  "*Arguments and Values:*
+
+   _parser_—a _parser_.
+
+   *Description:*
+
+   {=plus} is the non-deterministic choice combinator. It applies
+   _parsers_ to input and succeeds with the result of every successful
+   _parser_. {=plus} fails if every _parser_ fails."
   (lambda (input)
     (loop for parser in parsers 
        append (funcall parser input))))
 
 ;;; =LET* is the natural syntax for lispers
-(defmacro =let* (bindings &body body)
-  "A mix of =AND and LET*. Apply the parsers in BINDINGS as if by
-=AND and bind their results to the symbols in BINDINGS. If the symbol is
-{_} then ignore the result. Finally apply parsers in BODY with BINDINGS
-in an implicit PROGN."
+(defmacro =let* (bindings &body forms)
+  "*Arguments and Values:*
+
+   ↓_bindings_—a _list_ of bindings.
+
+   _forms_—_forms_ in which the last _form_ must return a _parser_.
+
+   *Syntax:*
+
+   _bindings_ ::= {(}\{{(}_symbol_ _parser_{)}\}*{)}
+
+   *Description:*
+
+   {=let*} applies the _parsers_ in _bindings_ as if by {=and} and
+   evaluates _forms_ in an implicit {let} environment where the results
+   are bound to the _symbols_ in _bindings_. Finally, {=let*} applies the
+   parser returned by the last _form_."
   (if bindings
       (let ((symbol (first (first bindings))))
 	`(=bind ,@(cdr (first bindings))
@@ -68,12 +115,19 @@ in an implicit PROGN."
                   ,@(when (string-equal (symbol-name symbol) "_")
                           `((declare (ignore ,symbol))))
                   (=let* ,(cdr bindings)
-		 ,@body))))
-      `(progn ,@body)))
+                    ,@forms))))
+      `(progn ,@forms)))
 
 (defun =or (&rest parsers)
-  "Apply PARSERS to until a parser is successful and return its result or
-fail."
+  "*Arguments and Values:*
+
+   _parsers_—_parsers_.
+
+   *Description:*
+
+   {=or} applies _parsers_ until one _parser_ succeeds, in which case it
+   succeeds with the result of that _parser_. If no _parser_ succeeds
+   {=or} fails."
   (declare (optimize speed))
   (labels ((non-consing-or (parsers)
 	     (lambda (input)
@@ -93,8 +147,15 @@ return the result of PARSER-B."
     parser-b))
 
 (defun =and (&rest parsers)
-  "Apply PARSERS sequentially. If all PARSERS succeed return the last
-  PARSERS result. Otherwise fail."
+  "*Arguments and Values:*
+
+   _parsers_—_parsers_.
+
+   *Description:*
+
+   {=and} applies _parsers_ sequentially. If all _parsers_ succeed,
+   {=and} succeeds with the last _parser_'s result. Otherwise {=and}
+   fails."
   (let ((p (first parsers))
 	(ps (rest parsers)))
     (if ps
@@ -102,7 +163,15 @@ return the result of PARSER-B."
 	(or p (=result nil)))))
 
 (defun =list (&rest parsers)
-  "Apply PARSERS like =AND but return their results as a list."
+  "*Arguments and Values:*
+
+   _parsers_—_parsers_.
+
+   *Description:*
+
+   {=list} applies _parsers_ sequentially. If all _parsers_ succeed,
+   {=list} succeeds with a list of their results. Otherwise {=list}
+   fails."
   (if parsers 
       (=let* ((x (first parsers))
 	      (xs (apply '=list (rest parsers))))
@@ -110,45 +179,119 @@ return the result of PARSER-B."
       (=result nil)))
 
 (defun =if (test-parser then-parser &optional (else-parser (=fail)))
-  "Apply THEN-PARSER if applying TEST-PARSER _would_ succeed. Apply
-ELSE-PARSER othwerwise."
+  "*Arguments and Values:*
+
+   _test-parser_—a _parser_.
+
+   _then-parser_—a _parser_.
+
+   _else-parser_—a _parser_. The default is {(=fail)}.
+
+   *Description:*
+
+   {=if} applies _then-parser_ if _test-parser_ would succeed and
+   _else-parser_ otherwise. Note that _test-parser_ is not actually
+   applied to the input."
   (lambda (input)
     (if (funcall test-parser input)
 	(funcall then-parser input)
 	(funcall else-parser input))))
 
 (defun =when (test-parser &rest parsers)
-  "Apply PARSERS as if by =AND when TEST-PARSER _would_ succeed."
+  "*Arguments and Values:*
+
+   _test-parser_—a _parser_.
+
+   _parsers_—_parsers_.
+
+   *Description:*
+
+   {=when} applies _parsers_ as if by {=and} if _test-parser_ would
+   succeed. Note that _test-parser_ is not actually applied to the
+   input."
   (=if test-parser (apply #'=and parsers)))
 
 (defun =unless (test-parser &rest parsers)
-  "Apply PARSERS as if by =AND unless TEST-PARSER _would_ succeed."
+  "*Arguments and Values:*
+
+   _test-parser_—a _parser_.
+
+   _parsers_—_parsers_.
+
+   *Description:*
+
+   {=unless} applies _parsers_ as if by {=and} if _test-parser_ would
+   fail. Note that _test-parser_ is not actually applied to the
+   input."
   (=if test-parser (=fail) (apply #'=and parsers)))
 
 (defun =not (parser)
-  "Appliy {(=ITEM)} to input unless PARSER _would_ succeed, otherwise
-fail."
+  "*Arguments and Values:*
+
+   _parser_—a _parser_.
+
+   *Description:*
+
+   {=not} consumes the next item and succeeds with that item as its
+   result if _parser_ would fail. E.g. it negates _parser_. Note that
+   _parser_ is not actually applied to the input. Fails if the input is
+   empty."
   (=if parser (=fail) (=item)))
 
 (defun =prog1 (parser &rest parsers)
-  "Apply PARSER and PARSERS as if by =AND but return the result of
-PARSER."
+  "*Arguments and Values:*
+
+   _parser_—a _parser_.
+
+   _parsers_—_parsers_.
+
+   *Description:*
+
+   {=prog1} applies _parser_ and _parsers_ sequentially. If they all
+   succeed, {=prog1} succeeds with _parser_'s result. Otherwise {=prog1}
+   fails."
   (=let* ((result parser)
 	  (_ (apply #'=and parsers)))
     (=result result)))
 
 (defun =prog2 (parser1 parser2 &rest parsers)
-  "Apply PARSER1, PARSER2 and PARSERS as if by =AND but return the result
-of PARSER2."
+  "*Arguments and Values:*
+
+   _parser1_—a _parser_.
+
+   _parser2_—a _parser_.
+
+   _parsers_—_parsers_.
+
+   *Description:*
+
+   {=prog2} applies _parser1_, _parser2_ and _parsers_ sequentially. If
+   they all succeed, {=prog2} succeeds with _parser2_'s result. Otherwise
+   {=prog2} fails."
   (=and parser1 (apply #'=prog1 parser2 parsers)))
 
 (defun =maybe (parser)
-  "Apply PARSER and return its result. If PARSER fails return NIL
-(e.g. never fail)."
+  "*Arguments and Values:*
+
+   _parser_—a _parser_.
+
+   *Description:*
+
+   {=maybe} applies _parser_. If _parser_ succeeds {=maybe} will succeed
+   with its result, otherwise it will succeed with {nil}."
   (=or parser (=result nil)))
 
 (defun =satisfies (predicate)
-  "Return next {(ITEM)} if it satisfies PREDICATE, othwerise fail."
+  "*Arguments and Values:*
+
+   _predicate_—a _function designator_ for a one-argument predicate
+   _function_.
+
+   *Description:*
+
+   {=satisfies} consumes the next item and succeeds with that item as its
+   result if the result satisfies _predicate_. Fails if the input is
+   empty."
   (=bind (=item)
 	(lambda (x)
 	  (if (funcall predicate x)
@@ -156,48 +299,102 @@ of PARSER2."
 	      (=fail)))))
 
 (defun =eql (x)
-  "Return next {(ITEM)} if it is EQL to X, otherwise fail."
+  "*Arguments and Values:*
+
+   _x_—an _object_.
+
+   *Description:*
+
+   {=eql} consumes the next item and succeeds with that item as its
+   result if the item is {eql} to _object_. Fails if the input is empty."
   (=satisfies (lambda (y) (eql x y))))
 
 (defun =one-of (list)
-  "Return next {(ITEM)} if it is EQL to any item in LIST, otherwise
-fail."
+  "*Arguments and Values:*
+
+   _list_—a _list_ of _objects_.
+
+   *Description:*
+
+   {=one-of} consumes the next item and succeeds with that item as its
+   result if the item is {eql} to any _object_ in _list_. Fails if the
+   input is empty."
   (=let* ((item (=item)))
     (if (find item list :test #'eql)
 	(=result item)
 	(=fail))))
 
 (defun =none-of (list)
-  "Return next {(ITEM)} if it is _not_ EQL to every item in LIST,
-otherwise fail."
+  "*Arguments and Values:*
+
+   _list_—a _list_ of _objects_.
+
+   *Description:*
+
+   {=none-of} consumes the next item and succeeds with that item as its
+   result unless the item is {eql} to one of the _objects_ in _list_.
+   Fails if the input is empty."
   (=not (=one-of list)))
 
 (defun =range (from to &key (parser (=item)) (predicate #'char<=))
-  "Return next {(ITEM)} if it it matches the range defined by FROM, TO
-and PREDICATE, otherwise fail. PARSER defaults to {(=ITEM)} and PREDICATE
-defaults to {#'CHAR<=}."
+  "*Arguments and Values:*
+
+   _from_—an _object_.
+
+   _to_—an _object_.
+
+   _parser_—a _parser_. The default is {(=item)}.
+
+   _predicate_—a _function designator_ for a three-argument predicate
+   _function_. The default is {char<=}.
+
+   *Description:*
+
+   {=range} applies _parser_ and, if it succeeds, applies _predicate_ to
+   _from_, its results and _to. {=range} succeeds with the result of
+   _parser_ if _predicate_ is _true_ and fails otherwise. Fails if the
+   input is empty."
   (=let* ((char parser))
     (if (funcall predicate from char to)
 	(=result char) 
 	(=fail))))
 
 (defun =one-or-more (parser)
-  "Return a list of results for each time PARSER can successfully be
-applied in sequence. Fail if PARSER can not be applied successfully at
-least once. "
+  "*Arguments and Values:*
+
+   _parser_—a _parser_.
+
+   *Description:*
+
+   {=one-or-more} applies _parser_ repeatedly until it fails and succeeds
+   with a list of the results if _parser_ succeeded at least one time."
   (=let* ((x parser)
 	  (y (=zero-or-more parser)))
     (=result (cons x y))))
 
 (defun =zero-or-more (parser)
-  "Return a list of results for each time PARSER can successfully be
-applied in sequence."
+  "*Arguments and Values:*
+
+   _parser_—a _parser_.
+
+   *Description:*
+
+   {=zero-or-more} applies _parser_ repeatedly until it fails and
+   succeeds with a list of the results."
   (=maybe (=one-or-more parser)))
 
 (defun =one-to (n parser)
-  "Return a list of up to N results for each time PARSER can successfully be
-applied in sequence. But fail if PARSER can not be applied successfully
-at least once."
+  "*Arguments and Values:*
+
+   _n_—a positive _integer_.
+
+   _parser_—a _parser_.
+
+   *Description:*
+
+   {=one-to} applies _parser_ repeatedly until it fails and succeeds with
+   a list of the results unless _parser_ succeeded less than once or more
+   than _n_ times."
   (case n
     (0 (=result nil))
     (t (=let* ((x parser)
@@ -206,14 +403,32 @@ at least once."
 	 (=result (cons x xs))))))
 
 (defun =zero-to (n parser)
-  "Return a list of up to N results for each time PARSER can successfully be
-applied in sequence."
+  "*Arguments and Values:*
+
+   _n_—an non-negative _integer_.
+
+   _parser_—a _parser_.
+
+   *Description:*
+
+   {=zero-to} applies _parser_ repeatedly until it fails and succeeds
+   with a list of the results unless _parser_ succeeded more than _n_
+   times."
   (=maybe (=one-to n parser)))
 
 (defun =at-least (n parser &key limit)
-  "Return a list of at least N and, if LIMIT is not NIL, up to LIMIT
-results for each time PARSER can successfully be applied in sequence,
-otherwise fail. LIMIT defaults to NIL."
+  "*Arguments and Values:*
+
+   _n_, _limit_—_bounding index designators_. The default for _limit_ is
+   {nil}.
+
+   _parser_—a _parser_.
+
+   *Description:*
+
+   {=at-least} applies _parser_ repeatedly until it fails and succeeds
+   with a list of the results unless _parser_ succeeded less than _n_
+   times or, if _limit_ is not {nil}, more than _limit_ times."
   (case n
     (0 (if limit
 	   (if (zerop limit)
@@ -225,22 +440,49 @@ otherwise fail. LIMIT defaults to NIL."
 	 (=result (cons x xs))))))
 
 (defun =exactly (n parser)
-  "Return a list of exactly N results of applying PARSER sequentially,
-otherwise fail."
+  "*Arguments and Values:*
+
+   _n_—an non-negative _integer_.
+
+   _parser_—a _parser_.
+
+   *Description:*
+
+   {=exactly} applies _parser_ repeatedly until it fails and succeeds
+   with a list of the results unless _parser_ succeeded not exactly _n_
+   times."
   (=at-least n parser :limit n))
 
 (defun =funcall (parser function)
-  "Apply PARSER. If it succeds call FUNCTION on its result and return the
-resulting value. Otherwise fail."
+  "*Arguments and Values:*
+
+   _parser_—a _parser_.
+
+   _function_—a _function designator_.
+
+   *Description:*
+
+   {=funcall} applies _parser_. If successful, {=funcall} applies
+   _function_ on its result and succeeds with the return value."
   (=let* ((result parser))
     (if result
 	(=result (funcall function result))
 	(=fail))))
 
 (defun run (parser input-source &key (result #'caar))
-  "Run a PARSER against INPUT-SOURCE, which can be an ARRAY, a
-STREAM or a LIST. Then call RESULT on the resulting list of {(VALUE
-. INPUT)} pairs. RESULT defaults to {#'CAAR} (e.g. returns the first
-VALUE)."
+  "*Arguments and Values:*
+
+   _parser_—a _parser_.
+
+   _input-source_—an _array_, an _input stream_ or a _list_.
+
+   _result_—a _function designator_ to a one-argument _function_. The
+   default is {caar}.
+
+   *Description:*
+
+   {run} applies _parser_ to _input-source_ and returns the result of
+   calling the _result_ function on the resulting list of
+   {(value . input)} pairs."
   (let ((*input-at-run* (make-input input-source)))
     (funcall result (funcall parser *input-at-run*))))

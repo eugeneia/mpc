@@ -5,10 +5,10 @@
 "Monadic parser combinators. This package contains many different parser
 combinators ranging from axioms to high level tools. It also contains the
 RUN entry function and various macros that help integrate parser
-combinators into the common lisp ecosystem. The functions and macros
-marked with the {=}-prefix return parsers. Their documentation is written
-as if from the resulting parsers perspective. To get an overview, read
-[manual.html], then come back for the details.")
+combinators into the common lisp ecosystem. Functions and starting with
+the {=}-prefix construct _parsers_. Their documentation is written from
+the perspective of the resulting parsers. Refer to the [MPC
+Manual](manual.html) for a general introduction.")
   (:use :cl)
   (:export :=end-of-input
 	   :=result
