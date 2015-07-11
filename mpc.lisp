@@ -413,7 +413,9 @@ return the result of PARSER-B."
    {=zero-to} applies _parser_ repeatedly until it fails and succeeds
    with a list of the results unless _parser_ succeeded more than _n_
    times."
-  (=maybe (=one-to n parser)))
+  (=if parser
+       (=one-to n parser)
+       (=result nil)))
 
 (defun =at-least (n parser &key limit)
   "*Arguments and Values:*
