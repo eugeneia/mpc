@@ -93,5 +93,6 @@
 	(input (gensym "INPUT")))
     `(let ((,parser-name ,parser))
        (lambda (,input)
-	 (restart-case (funcall ,parser-name ,input)
-	   ,@(cases-to-parser-cases restarts input))))))
+	 (let ((*input-during-fail* ,input))
+           (restart-case (funcall ,parser-name ,input)
+             ,@(cases-to-parser-cases restarts input)))))))
