@@ -395,12 +395,11 @@ return the result of PARSER-B."
    {=one-to} applies _parser_ repeatedly until it fails and succeeds with
    a list of the results unless _parser_ succeeded less than once or more
    than _n_ times."
-  (case n
-    (0 (=result nil))
-    (t (=let* ((x parser)
-	       (xs (=or (=one-to (1- n) parser)
-			(=result nil))))
-	 (=result (cons x xs))))))
+  (check-type n (integer 1 *))
+  (=let* ((x parser)
+          (xs (=or (=one-to (1- n) parser)
+                   (=result nil))))
+    (=result (cons x xs))))
 
 (defun =zero-to (n parser)
   "*Arguments and Values:*
