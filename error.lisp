@@ -6,8 +6,8 @@
   "Parses line position of POSITION in INPUT."
   (loop for i from 0 to position
      for in = input then (input-rest in)
-     for newline-p = (if (input-empty-p in) nil
-			 (char= #\Newline (input-first in)))
+     for newline-p = (unless (input-empty-p in)
+                       (char= #\Newline (input-first in)))
      for character = 0 then (if newline-p 0 (1+ character))
      for line = 1 then (+ line (if newline-p 1 0))
      when (= i position) return (values line character)))
