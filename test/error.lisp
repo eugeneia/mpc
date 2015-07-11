@@ -6,7 +6,8 @@
         :mpc
         :mpc.characters)
   (:export :test-input-position
-           :test-=handler-case))
+           :test-=handler-case
+           :test-=restart-case))
 
 (in-package :mpc.error-test)
 
@@ -26,3 +27,13 @@
                    (run (=handler-case (=fail (error "foo"))
                                        (error () (=string "bar")))
                         "bar"))))
+
+(defun test-=restart-case ()
+  "Test =HANDLER-CASE."
+  (assert
+   (string= "bar"
+            (run (=restart-case
+                  (=handler-case (=fail (error "foo"))
+                                 (error () (invoke-restart 'restart)))
+                  (restart () (=string "bar")))
+                 "bar"))))
