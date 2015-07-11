@@ -50,7 +50,8 @@ Manual](manual.html) for a general introduction.")
 Covered are case sensitivity, strings, whitespace and lines.")
   (:use :cl
 	:mpc)
-  (:export :=character
+  (:export :*whitespace*
+           :=character
 	   :=string
 	   :=string-of
 	   :=whitespace

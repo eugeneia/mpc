@@ -3,7 +3,14 @@
 (in-package :mpc.characters)
 
 (defparameter *whitespace* '(#\Tab #\Newline #\Vt #\Ff #\Return #\Space)
-  "Whitespace characters.")
+  "*Value Type:*
+
+   a _list_ of _characters_.
+
+   *Description:*
+
+   The _value_ of {*whitespace*} is a _list_ of _characters_ considered
+   to be _whitespace characters_.")
 
 (defun =character (character &optional (case-sensitive-p t))
   "*Arguments and Values:*
