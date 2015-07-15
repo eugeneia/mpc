@@ -19,9 +19,9 @@
 
    *Arguments and Values:*
 
-   _position_, _column_—non-negative _integers_ .
+   _position_, _column_—non-negative _integers_.
 
-   _line_—a positive _integer_ .
+   _line_—a positive _integer_.
 
    *Description:*
 

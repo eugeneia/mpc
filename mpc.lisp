@@ -100,7 +100,7 @@
 
    *Syntax:*
 
-   _bindings_ ::= {(}\{{(}_symbol_ _parser_{)}\}*{)}
+   _bindings_::= {(}〚{(}_symbol_ _parser_{)}*〛{)}
 
    *Description:*
 
