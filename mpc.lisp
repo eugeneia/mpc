@@ -92,7 +92,7 @@
 
 ;;; =LET* is the natural syntax for lispers
 (defmacro =let* (bindings &body forms)
-  "_bindings_::= {(}〚{(}_symbol_ _parser_{)}*〛{)}
+  "_bindings_::= {(}〚{(}_symbol_ _parser_{)}\\*〛{)}
 
    *Arguments and Values:*
 

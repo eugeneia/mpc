@@ -109,8 +109,7 @@
 
  The syntax of {=let*} is as follows:
 
- {(=let* ((}_symbol_ _parser_ {)}_..._{)} _parser..._{)}
- #
+ {(=let* ((}_symbol_ _parser_{)}\*{)} _parser_\*{)}
 
 >
 
