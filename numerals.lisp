@@ -9,9 +9,9 @@
 
    *Description:*
 
-   {=digit} consumes the next item and succeeds if the next item is a
-   digit _character_ in the specified radix. The result is the numerical
-   value of the digit."
+   {=digit} consumes the next item and succeeds with that item as its
+   result if the next item is a digit _character_ in the specified
+   _radix_."
   (=satisfies (lambda (x) (digit-char-p x radix))))
 
 (defun =natural-number (&optional (radix 10))
