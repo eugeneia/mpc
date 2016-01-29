@@ -351,7 +351,7 @@ return the result of PARSER-B."
    *Description:*
 
    {=range} applies _parser_ and, if it succeeds, applies _predicate_ to
-   _from_, its results and _to. {=range} succeeds with the result of
+   _from_, its results and _to_. {=range} succeeds with the result of
    _parser_ if _predicate_ is _true_ and fails otherwise. Fails if the
    input is empty."
   (=let* ((char parser))
