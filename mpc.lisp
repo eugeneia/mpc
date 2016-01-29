@@ -51,7 +51,7 @@
   "*Description:*
 
    {=item} consumes the next item and succeeds with that item as its
-   result unless the input is empty. Fails if the input is empty."
+   result unless the input is empty."
   (lambda (input)
     (unless (input-empty-p input)
       (list (cons (input-first input)
@@ -234,8 +234,7 @@ return the result of PARSER-B."
 
    {=not} consumes the next item and succeeds with that item as its
    result if _parser_ would fail. E.g. it negates _parser_. Note that
-   _parser_ is not actually applied to the input. Fails if the input is
-   empty."
+   _parser_ is not actually applied to the input."
   (=if parser (=fail) (=item)))
 
 (defun =prog1 (parser &rest parsers)
@@ -290,8 +289,7 @@ return the result of PARSER-B."
    *Description:*
 
    {=satisfies} consumes the next item and succeeds with that item as its
-   result if the result satisfies _predicate_. Fails if the input is
-   empty."
+   result if the result satisfies _predicate_."
   (=bind (=item)
 	(lambda (x)
 	  (if (funcall predicate x)
@@ -306,7 +304,7 @@ return the result of PARSER-B."
    *Description:*
 
    {=eql} consumes the next item and succeeds with that item as its
-   result if the item is {eql} to _object_. Fails if the input is empty."
+   result if the item is {eql} to _object_."
   (=satisfies (lambda (y) (eql x y))))
 
 (defun =one-of (list)
@@ -317,8 +315,7 @@ return the result of PARSER-B."
    *Description:*
 
    {=one-of} consumes the next item and succeeds with that item as its
-   result if the item is {eql} to any _object_ in _list_. Fails if the
-   input is empty."
+   result if the item is {eql} to any _object_ in _list_."
   (=let* ((item (=item)))
     (if (find item list :test 'eql)
 	(=result item)
@@ -332,8 +329,7 @@ return the result of PARSER-B."
    *Description:*
 
    {=none-of} consumes the next item and succeeds with that item as its
-   result unless the item is {eql} to one of the _objects_ in _list_.
-   Fails if the input is empty."
+   result unless the item is {eql} to one of the _objects_ in _list_."
   (=not (=one-of list)))
 
 (defun =range (from to &key (parser (=item)) (predicate 'char<=))
@@ -352,8 +348,7 @@ return the result of PARSER-B."
 
    {=range} applies _parser_ and, if it succeeds, applies _predicate_ to
    _from_, its results and _to_. {=range} succeeds with the result of
-   _parser_ if _predicate_ is _true_ and fails otherwise. Fails if the
-   input is empty."
+   _parser_ if _predicate_ is _true_ and fails otherwise."
   (=let* ((char parser))
     (if (funcall predicate from char to)
 	(=result char) 
