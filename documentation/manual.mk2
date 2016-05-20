@@ -15,8 +15,8 @@
 
 < A brief practical example
 
- Assuming you want to parse an email address in the form of
- {<user>@<host>}. Let's start by defining our package:
+ Assume you want to parse an email address in the form of {<user>@<host>}.
+ Let's start by defining our package:
 
  #code #
  (defpackage simple-address
@@ -25,22 +25,30 @@
  (in-package :simple-address)
  #
 
- Next we restrict the allowed characters in the _user_ and _host_ fields:
+ Now we define a new parser called {=address-character} which parses the set of
+ characters allowed in the _user_ and _host_ portions of an address. It uses
+ {=or} to form the union of two parsers that each parse a set of characters,
+ and parses one character that is eiher an alphanumeric character or any one of
+ the _dash_, _underscore_, _perioid_ and _plus_ characters. Note how it uses
+ Common Lisp's {alphanumericp} function.
 
- #code That is: Alphanumeric characters or any one of the _dash_,
- _underscore_, _perioid_ and _plus_ chracters. Note how we use Common
- Lisp's {alphanumericp}.#
+ #code#
  (defun =address-character ()
    (=or (=satisfies #'alphanumericp)
         (=one-of '(#\- #\_ #\. #\+))))
  #
 
- Finally we use {=address-character} to implement a simple address
- parser:
+ Next we use {=address-character} to implement a simple address parser which
+ parses two sequences of “address characters” separated by an _@_ character.
+ {(=string-of (=address-character))} is invoked to construct a parser which
+ applies {(=address-character)} repeatedly—but at least one time‑and returns
+ the resulting character sequence as a string. {=let*} is used to apply parsers
+ in sequence while remembering their individual results. The {_} symbol is
+ treated specially in {=let*} bindings and is used to discard a parsers result.
+ Finally, {=simple-address} return a list containing the _user_ and _host_
+ strings using {=result}.
 
- #code The {_} binding in the {=let*} bindings is used to ignore the {@}
- seperator. We return a list containing the {user} and {host} strings
- using {=result}.#
+ #code#
  (defun =simple-address ()
    (=let* ((user (=string-of (=address-character)))
            (_ (=character #\@))
@@ -61,14 +69,14 @@
 >
 
 
-< {run}: Main entry point.
+< Applying Parsers
 
- {run} is the main entry point to MPC and has to be used to run a
- _parser_ against an _input-source_. The _input-source_ can be of type
- {array}, {file-stream} or {list}. Because MPC supports non-deterministic
- parsers which can return multiple results, {run} accepts a keyword
- parameter _result_, a function used to select the desired return
- value. By default {run} returns only the first result's value.
+ {run} is the main entry point to MPC and has to be used to run a _parser_
+ against an _input-source_. The _input-source_ can be of type {array},
+ {file-stream} or {list}. Because MPC supports non-deterministic parsers which
+ can return multiple results, {run} accepts a keyword parameter _result_ used
+ to select the desired return value. By default {run} returns only the first
+ result's value.
 
 >
 
@@ -77,7 +85,7 @@
 
  The core of MPC is made up of primitive parsers and combinators. A
  parser is a function that accepts an input source and returns a list of
- pairs containing the result and the remaining input if it is successful
+ pairs containing the result and the remaining input if it is successful,
  and {nil} othwerise to signal its failure to parent parsers. A
  combinator is a function which returns a parser. For consistency
  primitive parsers are defined as combinators that that always return the
@@ -174,9 +182,8 @@
 
 < Parsers for numerals
 
- {=digit} parses a number from a digit character. {=natural-number} and
- {=integer-number} both parse numbers from numeral strings while the
- latter also understands a leading dash for negativity. All three parses
- accept an optional radix argument.
+ {=digit} parses a digit character. {=natural-number} and {=integer-number}
+ both parse numbers from numeral strings. The latter also parses signed
+ numbers. All three parsers accept an optional radix argument.
 
 >

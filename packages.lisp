@@ -2,13 +2,12 @@
 
 (defpackage mpc
   (:documentation
-"Monadic parser combinators. This package contains many different parser
-combinators ranging from axioms to high level tools. It also contains the
-RUN entry function and various macros that help integrate parser
-combinators into the common lisp ecosystem. Functions and starting with
-the {=}-prefix construct _parsers_. Their documentation is written from
-the perspective of the resulting parsers. Refer to the [MPC
-Manual](manual.html) for a general introduction.")
+"Monadic parser combinators. This package contains general purpose parser
+combinators of varying sophistication. It also contains the {run} entry
+function and a handful of macros that integrate parser combinators into the
+Common Lisp condition system. Functions starting with the {=}-prefix construct
+_parsers_. Their documentation is written from the perspective of the resulting
+parser. Refer to the [MPC Manual](manual.html) for a general introduction.")
   (:use :cl)
   (:export :=end-of-input
 	   :=result
