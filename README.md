@@ -1,5 +1,10 @@
 # mpc
 
+**Deprecated!**
+
+MPC is deprecated in favor of [MaxPC](https://github.com/eugeneia/maxpc). See:
+[Max’s Parser Combinators: Why? How?](http://mr.gy/blog/maxpc.html)
+
 **Description:**
 
 A friendly fork of Drew Crampsie's [Smug](https://github.com/drewc/smug).
