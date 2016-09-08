@@ -151,13 +151,17 @@
 
 ;;;
 
-(defstruct (readline-stream (:include index))
+(defstruct (readline-stream (:include index)
+			    (:constructor make-readline-stream-internal))
   (read-function (lambda () (read-line t nil))
    :type function
    :read-only t)
   (string
    ""
    :type string))
+
+(defun make-readline-stream (read-function)
+  (make-readline-stream-internal :read-function read-function))
 
 (defmethod make-input ((input readline-stream))
   input)
@@ -184,7 +188,7 @@
 	(readline-stream-position input)))
 
 (defmethod input-rest ((input readline-stream))
-  (make-readline-stream
+  (make-readline-stream-internal
    :read-function (readline-stream-read-function input)
    :string (readline-stream-string input)
    :position (1+ (readline-stream-position input))))
