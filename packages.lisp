@@ -42,7 +42,8 @@ Manual](manual.html) for a general introduction.")
 	   :=handler-case
 	   :=restart-case
 	   :run
-	   :get-input-position))
+	   :get-input-position
+	   :make-readline-stream))
 
 (defpackage mpc.characters
   (:documentation
