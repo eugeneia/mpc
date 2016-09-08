@@ -148,3 +148,47 @@
   (let ((array (make-array (file-length input)
 			   :element-type (stream-element-type input))))
     (make-input (subseq array 0 (read-sequence array input)))))
+
+;;;
+
+(defstruct (readline-stream (:include index)
+			    (:constructor make-readline-stream-internal))
+  (read-function (lambda () (read-line t nil))
+   :type function
+   :read-only t)
+  (string
+   ""
+   :type string))
+
+(defun make-readline-stream (read-function)
+  (make-readline-stream-internal :read-function read-function))
+
+(defmethod make-input ((input readline-stream))
+  input)
+
+(defmethod input-element-type ((input readline-stream))
+  'character)
+
+(defmethod input-empty-p ((input readline-stream))
+  (loop
+    (if (<= (length (readline-stream-string input))
+	    (readline-stream-position input))
+	(let ((line (funcall (readline-stream-read-function input))))
+	  (if line
+	      (setf (readline-stream-string input)
+		    (concatenate 'string
+				 (readline-stream-string input)
+				 (string #\newline)
+				 line))
+	      (return t)))
+	(return nil))))
+
+(defmethod input-first ((input readline-stream))
+  (aref (readline-stream-string input)
+	(readline-stream-position input)))
+
+(defmethod input-rest ((input readline-stream))
+  (make-readline-stream-internal
+   :read-function (readline-stream-read-function input)
+   :string (readline-stream-string input)
+   :position (1+ (readline-stream-position input))))
